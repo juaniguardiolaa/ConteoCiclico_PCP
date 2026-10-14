@@ -30,6 +30,7 @@ export async function mostrar(contenedor, app) {
           ${fechaCorta(p.fechaConteo)}. Físico = lo contado con la app. Diferencia = físico − teórico, por posición,
           material y lote.
         </p>
+        <div id="aviso-cola"></div>
         <div id="cobertura"></div>
         <div id="resultado-conciliacion" aria-live="polite"></div>
       </section>`,
@@ -40,13 +41,29 @@ export async function mostrar(contenedor, app) {
 
   const ejecutar = async () => {
     zonaResultado.innerHTML = '<p class="nota">Conciliando…</p>';
-    const r = await app.backend.conciliar(app.sesion.campania);
+    let r;
+    try {
+      r = await app.backend.conciliar(app.sesion.campania);
+    } catch (error) {
+      r = { ok: false, mensaje: `No se pudo conciliar: ${error.message} La conciliación necesita conexión con la planilla.` };
+    }
     if (!r.ok) {
       pintar(zonaResultado, html`<div class="mensaje error"><p>${r.mensaje}</p></div>`);
       return;
     }
     pintarResultado(zonaResultado, r, app);
   };
+
+  const pendientes = app.cola.pendientes().length;
+  if (pendientes) {
+    pintar(
+      contenedor.querySelector('#aviso-cola'),
+      html`<div class="mensaje advertencia">
+        <p><strong>Hay ${pendientes} registro(s) en este celular sin enviar.</strong> La conciliación usa lo que llegó al
+        servidor: conviene esperar a que se envíen o tocar «Reintentar ahora» en la ruta.</p>
+      </div>`,
+    );
+  }
 
   if (cob.faltantes.length) {
     pintar(

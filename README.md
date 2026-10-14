@@ -20,6 +20,8 @@ Los registros quedan guardados en el navegador de cada uno. **Ajustes → Borrar
 
 Para probar la cámara sin imprimir: abrir la página de etiquetas en la compu y escanearlas desde el celular con la app. Con la opción «Etiquetas de prueba de los controles» aparecen también las que la app tiene que rechazar.
 
+Sin conexión: con el celular en modo avión (o con **Ajustes → Simular que no hay conexión**), lo que se confirma queda guardado en el celular, el mapa lo marca con un punto naranja y se envía solo cuando vuelve la red. La app se puede abrir y recargar sin red después de la primera visita.
+
 Controles que se pueden probar: `Z9` (posición inexistente), `B2` dos veces (duplicado), `PROD001 L005` (lote mal formado), `PROD001 L0099` (lote desconocido, solo advierte), cantidad `-12` o `1,5` (rechazadas).
 
 ## Cómo correrla en la compu

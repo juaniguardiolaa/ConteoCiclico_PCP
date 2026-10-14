@@ -3,6 +3,8 @@
 // limpieza (por ejemplo, para apagar la cámara al salir).
 import { almacen } from './almacen.js';
 import { crearBackend } from './backend/index.js';
+import { crearCola } from './dominio/cola.js';
+import { combinarPendientes } from './dominio/registros.js';
 import { crearContexto } from './dominio/validaciones.js';
 import { ROLES, puedeConciliar } from './roles.js';
 import { avisar, fechaCorta, html, pintar } from './ui.js';
@@ -28,15 +30,22 @@ const PANTALLAS = {
   ajustes: { modulo: ajustes, pestania: 'ajustes' },
 };
 
+const SINCRONIZAR_CADA_MS = 5000;
+
 const app = {
   sesion: almacen.leer('sesion'),
   config: almacen.leer('config', { modo: 'demo' }),
   backend: null,
+  cola: null,
   parametros: null,
   maestros: null,
+  /** Último estado conocido del servidor (sirve sin conexión). */
+  estadoServidor: null,
+  /** Lo que ve el celular: servidor + registros en cola sin enviar. */
   estado: { registros: [], reconteos: [] },
   /** Registro que se está armando paso a paso: { tipo, posicion, codigo, lote, cantidad, vacia, advertencia } */
   borrador: null,
+  pantalla: null,
 
   ir(pantalla) {
     const destino = `#/${pantalla}`;
@@ -56,8 +65,34 @@ const app = {
     });
   },
 
+  /** Trae el estado de la campaña. Sin conexión usa el último conocido; siempre suma la cola. */
   async refrescar() {
-    this.estado = await this.backend.estado(this.sesion.campania);
+    const campania = this.sesion.campania;
+    try {
+      this.estadoServidor = await this.backend.estado(campania);
+      almacen.guardar('estadoCache', { campania, ...this.estadoServidor });
+    } catch {
+      const cache = almacen.leer('estadoCache');
+      this.estadoServidor ??=
+        cache?.campania === campania ? { registros: cache.registros, reconteos: cache.reconteos } : { registros: [], reconteos: [] };
+    }
+    this.estado = {
+      registros: combinarPendientes(this.estadoServidor.registros, this.cola.pendientes(), campania),
+      reconteos: this.estadoServidor.reconteos,
+    };
+  },
+
+  /** Envía la cola. Con `forzar` no espera el próximo reintento (botón «Reintentar» o al volver la red). */
+  async sincronizar(forzar = false) {
+    if (!this.cola.pendientes().length) return;
+    const r = await this.cola.procesar({ forzar });
+    if (r.enviados.length) avisar(`Se enviaron ${r.enviados.length} registro(s) que estaban sin enviar.`);
+    if (r.rechazados.length) avisar(`${r.rechazados.length} registro(s) rechazados: revisalos en la ruta.`, 'error');
+    if ((r.enviados.length || r.rechazados.length) && this.pantalla === 'ruta') mostrarPantalla();
+  },
+
+  sinConexion() {
+    return navigator.onLine === false || Boolean(this.backend?.sinConexionSimulada?.());
   },
 
   iniciarSesion(sesion) {
@@ -77,11 +112,13 @@ const app = {
   },
 
   avisar,
+  pintarEncabezado,
 };
 
 function pintarEncabezado() {
   const encabezado = document.getElementById('encabezado');
   const p = app.parametros;
+  const pendientes = app.cola?.pendientes().length ?? 0;
   pintar(
     encabezado,
     html`
@@ -90,7 +127,11 @@ function pintarEncabezado() {
         ${p ? html`<span class="encabezado-fecha">Conteo al ${fechaCorta(p.fechaConteo)}</span>` : ''}
       </div>
       <div class="encabezado-estado">
-        ${app.backend ? html`<span class="chip-modo" data-modo="${app.backend.modo}">${app.backend.nombre}</span>` : ''}
+        <span class="encabezado-chips">
+          ${app.backend && app.sinConexion() ? html`<span class="chip-modo" data-modo="sin-conexion">Sin conexión</span>` : ''}
+          ${pendientes ? html`<span class="chip-modo" data-modo="pendientes">${pendientes} sin enviar</span>` : ''}
+          ${app.backend ? html`<span class="chip-modo" data-modo="${app.backend.modo}">${app.backend.nombre}</span>` : ''}
+        </span>
         ${app.sesion ? html`<span class="encabezado-usuario">${app.sesion.usuario} (${ROLES[app.sesion.rol]?.corto ?? ''})</span>` : ''}
       </div>`,
   );
@@ -133,6 +174,7 @@ async function mostrarPantalla() {
     await anterior();
   }
 
+  app.pantalla = nombre;
   pintarEncabezado();
   pintarNavegacion(PANTALLAS[nombre].pestania);
   const principal = document.getElementById('principal');
@@ -153,12 +195,30 @@ async function mostrarPantalla() {
   principal.querySelector('h1')?.focus({ preventScroll: true });
 }
 
-async function arrancar() {
-  app.backend = crearBackend(app.config, almacen);
-  const principal = document.getElementById('principal');
+/** Maestros y parámetros: del servidor si hay conexión; si no, los últimos que se guardaron. */
+async function cargarMaestros() {
   try {
     app.parametros = await app.backend.parametros();
     app.maestros = await app.backend.maestros();
+    almacen.guardar('maestrosCache', { modo: app.backend.modo, parametros: app.parametros, maestros: app.maestros });
+  } catch (error) {
+    const cache = almacen.leer('maestrosCache');
+    if (cache?.modo !== app.backend.modo) throw error;
+    app.parametros = cache.parametros;
+    app.maestros = cache.maestros;
+  }
+}
+
+async function arrancar() {
+  app.backend = crearBackend(app.config, almacen);
+  app.cola = crearCola({
+    almacen,
+    enviar: (registro) => app.backend.registrar(registro),
+    alCambiar: pintarEncabezado,
+  });
+  const principal = document.getElementById('principal');
+  try {
+    await cargarMaestros();
     if (app.sesion && app.sesion.campania !== app.parametros.campania) app.cerrarSesion();
     if (app.sesion) await app.refrescar();
   } catch (error) {
@@ -174,8 +234,25 @@ async function arrancar() {
     );
     return;
   }
+
   window.addEventListener('hashchange', mostrarPantalla);
+  window.addEventListener('online', () => {
+    pintarEncabezado();
+    app.sincronizar(true);
+  });
+  window.addEventListener('offline', pintarEncabezado);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') app.sincronizar();
+  });
+  setInterval(() => app.sincronizar(), SINCRONIZAR_CADA_MS);
+
   mostrarPantalla();
+  app.sincronizar(true);
+}
+
+// Guarda la app en el celular para poder abrirla y recargarla sin conexión (docs/sw.js).
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch((error) => console.warn('Service worker no registrado:', error));
 }
 
 arrancar();

@@ -35,7 +35,17 @@ export async function mostrar(contenedor, app) {
             <div class="acciones">
               <button class="boton secundario" type="button" data-accion="precargar">Cargar el conteo del enunciado</button>
               <button class="boton secundario peligro" type="button" data-accion="borrar">Borrar los datos de demo</button>
-            </div>`
+            </div>
+
+            <h2>Prueba sin conexión</h2>
+            <label class="interruptor">
+              <input type="checkbox" data-accion="sin-conexion" ${app.backend.sinConexionSimulada() ? 'checked' : ''}>
+              <span>Simular que no hay conexión con el servidor</span>
+            </label>
+            <p class="nota">
+              Hace lo mismo que poner el celular en modo avión: los registros quedan en la cola y se envían al
+              destildarlo. Sirve para mostrarlo en la exposición sin cortar la red del proyector.
+            </p>`
           : ''}
 
         <h2>Etiquetas</h2>
@@ -58,6 +68,18 @@ export async function mostrar(contenedor, app) {
     await app.refrescar();
     app.avisar(r.mensaje);
     app.ir('ruta');
+  });
+
+  contenedor.querySelector('[data-accion="sin-conexion"]')?.addEventListener('change', async (evento) => {
+    const sinConexion = evento.currentTarget.checked;
+    app.backend.simularSinConexion(sinConexion);
+    app.pintarEncabezado();
+    if (sinConexion) {
+      app.avisar('Sin conexión simulada: lo que se cargue queda en la cola.', 'info');
+    } else {
+      app.avisar('Conexión restablecida.');
+      await app.sincronizar(true);
+    }
   });
 
   contenedor.querySelector('[data-accion="borrar"]')?.addEventListener('click', async () => {

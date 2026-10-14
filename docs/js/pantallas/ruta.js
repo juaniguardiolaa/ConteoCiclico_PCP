@@ -12,16 +12,25 @@ export async function mostrar(contenedor, app) {
   const total = app.maestros.posiciones.length;
   const relevadas = app.maestros.posiciones.filter((p) => porPosicion.has(p.posicion)).length;
   const completo = relevadas === total;
+  const pendientes = app.cola.pendientes();
+  const rechazados = app.cola.rechazados();
 
   const celda = (posicion) => {
     const r = porPosicion.get(posicion);
     if (reconteos.includes(posicion)) return { clase: 'reconteo', texto: 'recontar', descripcion: 'reconteo pedido por Control' };
     if (!r) return { clase: 'pendiente', descripcion: 'pendiente' };
-    if (r.vacia) return { clase: 'vacia', texto: 'vacía', descripcion: 'relevada, vacía' };
-    return { clase: 'contada', texto: entero(r.cantidad), descripcion: `contada, ${r.codigo} ${r.lote}, ${r.cantidad} unidades` };
+    const envio = r.pendiente ? ' sin-enviar' : '';
+    const aclaracion = r.pendiente ? ', sin enviar' : '';
+    if (r.vacia) return { clase: `vacia${envio}`, texto: 'vacía', descripcion: `relevada, vacía${aclaracion}` };
+    return {
+      clase: `contada${envio}`,
+      texto: entero(r.cantidad),
+      descripcion: `contada, ${r.codigo} ${r.lote}, ${r.cantidad} unidades${aclaracion}`,
+    };
   };
 
   const recientes = [...validos].sort((a, b) => b.fechaHora.localeCompare(a.fechaHora)).slice(0, 5);
+  const ultimoError = pendientes.find((e) => e.ultimoError)?.ultimoError;
 
   pintar(
     contenedor,
@@ -35,12 +44,38 @@ export async function mostrar(contenedor, app) {
           </div>
         </div>
 
+        ${rechazados.map(
+          (r) => html`
+            <div class="mensaje error" role="alert">
+              <p><strong>La posición ${r.registro.posicion} no se registró.</strong> ${r.mensaje}</p>
+              <p class="mensaje-codigo">Control: ${r.codigo}. Se había cargado sin conexión a las ${horaCorta(r.registro.fechaHora)}.</p>
+              <div class="mensaje-acciones">
+                <button class="boton secundario" type="button" data-descartar="${r.registro.id}">Entendido</button>
+              </div>
+            </div>`,
+        )}
+
+        ${pendientes.length
+          ? html`<div class="mensaje advertencia">
+              <p>
+                <strong>${pendientes.length} registro(s) sin enviar</strong>
+                (${pendientes.map((e) => e.registro.posicion).join(', ')}). Están guardados en el celular y se envían
+                solos cuando vuelve la conexión.
+              </p>
+              ${ultimoError ? html`<p class="mensaje-codigo">Último intento: ${ultimoError}</p>` : ''}
+              <div class="mensaje-acciones">
+                <button class="boton secundario" type="button" data-accion="reintentar">Reintentar ahora</button>
+              </div>
+            </div>`
+          : ''}
+
         ${rackHTML(app.maestros.posiciones, celda, 'Mapa del rack con el estado de cada posición')}
 
         <ul class="leyenda" aria-label="Referencias del mapa">
           <li><span class="muestra pendiente"></span>Pendiente</li>
           <li><span class="muestra contada"></span>Contada</li>
           <li><span class="muestra vacia"></span>Vacía</li>
+          ${pendientes.length ? html`<li><span class="muestra contada sin-enviar"></span>Sin enviar</li>` : ''}
           ${reconteos.length ? html`<li><span class="muestra reconteo"></span>Reconteo pedido</li>` : ''}
         </ul>
 
@@ -67,7 +102,10 @@ export async function mostrar(contenedor, app) {
                 (r) => html`
                   <li>
                     <span class="recientes-pos">${r.posicion}</span>
-                    <span class="recientes-detalle">${r.vacia ? 'Vacía' : `${r.codigo} ${r.lote}`}${r.tipo === 'RECONTEO' ? ' (reconteo)' : ''}</span>
+                    <span class="recientes-detalle">
+                      ${r.vacia ? 'Vacía' : `${r.codigo} ${r.lote}`}${r.tipo === 'RECONTEO' ? ' (reconteo)' : ''}
+                      ${r.pendiente ? html`<span class="recientes-envio">sin enviar</span>` : ''}
+                    </span>
                     <span class="recientes-cant">${r.vacia ? '0' : entero(r.cantidad)}</span>
                     <span class="recientes-hora">${horaCorta(r.fechaHora)}</span>
                   </li>`,
@@ -81,4 +119,21 @@ export async function mostrar(contenedor, app) {
     app.borrador = { tipo: 'CONTEO' };
     app.ir('posicion');
   });
+
+  contenedor.querySelector('[data-accion="reintentar"]')?.addEventListener('click', async (evento) => {
+    evento.currentTarget.disabled = true;
+    evento.currentTarget.textContent = 'Enviando…';
+    await app.sincronizar(true);
+    if (app.cola.pendientes().length) {
+      app.avisar('Todavía no hay conexión. Se va a volver a intentar solo.', 'info');
+      app.ir('ruta');
+    }
+  });
+
+  contenedor.querySelectorAll('[data-descartar]').forEach((boton) =>
+    boton.addEventListener('click', () => {
+      app.cola.descartarRechazo(boton.dataset.descartar);
+      app.ir('ruta');
+    }),
+  );
 }

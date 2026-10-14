@@ -72,6 +72,20 @@ export function agregarRegistro(registros, registro) {
 }
 
 /**
+ * Lo que ve el celular: los registros del servidor más los que todavía están en la cola sin enviar
+ * (marcados con `pendiente: true`). Así el mapa muestra la posición como contada y la validación 2
+ * detecta un duplicado aunque el primer registro no haya llegado al servidor.
+ */
+export function combinarPendientes(registros, pendientes, campania) {
+  let combinados = registros;
+  for (const { registro } of pendientes) {
+    if (registro.campania !== campania) continue;
+    combinados = agregarRegistro(combinados, { ...registro, pendiente: true }).registros;
+  }
+  return combinados;
+}
+
+/**
  * Convierte una foto de stock físico (la hoja Stock 1410 del enunciado) en los registros que
  * cargaría un operario: una lectura por posición ocupada y una lectura «vacía» por cada posición
  * sin stock. Se usa en los tests y en el botón «Precargar el conteo del caso» del modo demo.

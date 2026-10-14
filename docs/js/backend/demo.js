@@ -8,6 +8,7 @@ import { agregarRegistro, registrosDesdeStockFisico } from '../dominio/registros
 import { crearContexto, validarRegistro } from '../dominio/validaciones.js';
 
 const CLAVE = 'demo';
+const CLAVE_SIN_CONEXION = 'demoSinConexion';
 const vacio = () => ({ registros: [], reconteos: [] });
 
 export function crearBackendDemo(almacen) {
@@ -16,9 +17,19 @@ export function crearBackendDemo(almacen) {
   const posiciones = CASO.posiciones.map((p) => p.posicion);
   const lotes = [...paresMaterialLote(CASO.stock3009, CASO.movimientos)].sort();
 
+  // El «servidor» demo vive en el navegador, pero se comporta como uno remoto: con el celular en
+  // modo avión (o con la simulación de Ajustes) no responde, para poder mostrar la cola sin conexión.
+  const sinConexion = () => globalThis.navigator?.onLine === false || almacen.leer(CLAVE_SIN_CONEXION, false);
+  const exigirConexion = () => {
+    if (sinConexion()) throw new Error('Sin conexión con el servidor.');
+  };
+
   return {
     modo: 'demo',
     nombre: 'Modo demo',
+
+    sinConexionSimulada: () => almacen.leer(CLAVE_SIN_CONEXION, false),
+    simularSinConexion: (valor) => almacen.guardar(CLAVE_SIN_CONEXION, Boolean(valor)),
 
     async parametros() {
       return {
@@ -34,12 +45,14 @@ export function crearBackendDemo(almacen) {
     },
 
     async estado(campania) {
+      exigirConexion();
       const datos = cargar();
       return { registros: datos.registros.filter((r) => r.campania === campania), reconteos: datos.reconteos };
     },
 
     /** Mismo orden que el servidor: ID repetido (regla 7), validaciones, alta. */
     async registrar(registro) {
+      exigirConexion();
       const datos = cargar();
       if (datos.registros.some((r) => r.id === registro.id)) {
         return { ok: true, codigo: 'YA_REGISTRADO', mensaje: 'El registro ya estaba cargado; no se duplicó.' };
@@ -63,6 +76,7 @@ export function crearBackendDemo(almacen) {
     },
 
     async conciliar(campania) {
+      exigirConexion();
       const { registros } = cargar();
       const filas = conciliar({
         materiales: CASO.materiales,

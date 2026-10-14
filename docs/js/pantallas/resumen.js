@@ -65,28 +65,36 @@ export async function mostrar(contenedor, app) {
       return;
     }
 
+    // El registro queda guardado en el celular antes de enviarlo: si no hay red, no se pierde.
     confirmar.disabled = true;
     confirmar.textContent = 'Enviando…';
-    let respuesta;
-    try {
-      respuesta = await app.backend.registrar(registro);
-    } catch (error) {
-      respuesta = { ok: false, codigo: 'SIN_CONEXION', mensaje: `No se pudo enviar el registro: ${error.message}` };
-    }
+    app.cola.encolar(registro);
+    await app.cola.procesar({ forzar: true });
+    const estado = app.cola.estadoDe(registro.id);
 
-    if (respuesta.ok) {
-      app.borrador = null;
-      app.avisar(respuesta.mensaje);
-      app.ir('ruta');
+    if (estado === 'rechazado') {
+      const rechazo = app.cola.rechazados().find((r) => r.registro.id === registro.id);
+      app.cola.descartarRechazo(registro.id); // el aviso se muestra acá mismo
+      confirmar.disabled = false;
+      confirmar.textContent = 'Confirmar y enviar';
+      mostrarResultado(resultado, {
+        tipo: 'error',
+        mensaje: rechazo.mensaje,
+        codigo: rechazo.codigo,
+        acciones: [{ texto: 'Volver a la ruta', alHacer: () => app.ir('ruta') }],
+      });
       return;
     }
-    confirmar.disabled = false;
-    confirmar.textContent = 'Confirmar y enviar';
-    mostrarResultado(resultado, {
-      tipo: 'error',
-      mensaje: respuesta.mensaje,
-      codigo: respuesta.codigo,
-      acciones: [{ texto: 'Volver a la ruta', alHacer: () => app.ir('ruta') }],
-    });
+
+    app.borrador = null;
+    if (estado === 'enviado') {
+      app.avisar(`Posición ${b.posicion} ${app.backend.modo === 'demo' ? 'registrada' : 'enviada a la planilla'}.`);
+    } else {
+      app.avisar(
+        `Sin conexión: la posición ${b.posicion} quedó guardada en el celular y se envía sola cuando vuelva la red.`,
+        'info',
+      );
+    }
+    app.ir('ruta');
   });
 }

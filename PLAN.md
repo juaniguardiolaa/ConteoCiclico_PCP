@@ -12,7 +12,8 @@ Repositorio: https://github.com/juaniguardiolaa/ConteoCiclico_PCP
 | H1 · Datos y lógica de dominio | Hecho el 14/10. La conciliación da la tabla esperada. |
 | H2 · App de captura en modo demo | Hecho el 14/10: pantallas 1 a 7, escáner, mapa del rack y, adelantada, la pantalla 8 (conciliación) en modo demo. Falta la prueba con la cámara del celular (👤). |
 | H4 · Etiquetas para imprimir | Hecho el 14/10, antes que H3, para poder probar la cámara. 28 de posición, 21 de producto para la simulación (o 22 de catálogo) y 4 de prueba de controles. Verificado: los 53 QR y los 53 Code 128 del PDF se leen a 200 ppp, y html5-qrcode lee la etiqueta impresa. Falta escanearlas con el celular (👤). |
-| H3, H5 a H8 | Pendientes |
+| H3 · Cola sin conexión | Hecho el 14/10. Cola con espera creciente y envío al volver la red, avisos de pendientes y rechazados, interruptor para simular el corte en modo demo y service worker para abrir la app sin red. Verificado en el navegador: 3 posiciones sin conexión se envían al volver sin duplicar, y la app recarga con la red cortada. |
+| H5 a H8 | Pendientes. H5 espera la cuenta gmail del grupo (👤). |
 
 ## Qué cambia respecto del plan del 13/10
 
