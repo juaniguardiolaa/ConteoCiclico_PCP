@@ -66,6 +66,7 @@ export async function probarConexion(url, token, fetchFn = (...a) => globalThis.
   try {
     const ping = await llamarWebApp(url, { accion: 'ping', token }, fetchFn);
     if (!ping.ok) return { ok: false, mensaje: ping.mensaje };
+    if (ping.datos.hojasListas === false) return { ok: false, mensaje: ping.mensaje };
     if (!ping.datos.tokenValido) {
       return { ok: false, mensaje: 'El Web App responde, pero el token no coincide con el de la hoja Parametros.' };
     }

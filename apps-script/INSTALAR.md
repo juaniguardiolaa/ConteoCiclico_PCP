@@ -23,7 +23,14 @@ Se hace una sola vez, con la cuenta de Google que va a ser dueña de la planilla
 2. En el engranaje de «Seleccionar tipo», elegir **Aplicación web**.
 3. Descripción: `v1`. **Ejecutar como: Yo**. **Quién tiene acceso: Cualquier usuario**.
 4. **Implementar**, y copiar la **URL de la aplicación web** (termina en `/exec`).
-5. Pegar esa URL en una pestaña del navegador. Tiene que mostrar algo como `{"ok":true,"codigo":"PONG",...}`. Si aparece una página de inicio de sesión de Google, el acceso no quedó en «Cualquier usuario».
+5. Pegar esa URL en una pestaña del navegador. Tiene que mostrar algo como:
+
+   ```json
+   {"ok":true,"codigo":"PONG","mensaje":"El Web App responde.","datos":{"version":"0.5.1","hojasListas":true,...}}
+   ```
+
+   - Si dice `"hojasListas":false`, falta el paso 2: ejecutar **setupHojas**.
+   - Si aparece una página de inicio de sesión de Google, el acceso no quedó en «Cualquier usuario».
 
 ## 4. Conectar la app
 
@@ -39,6 +46,16 @@ Cada vez que en el repo cambia `apps-script/conteo-ciclico.gs`:
 2. **Implementar → Gestionar implementaciones** → el lápiz de la implementación activa → **Versión: Nueva versión** → **Implementar**.
 
 Así la URL no cambia y no hay que reconfigurar los celulares. Si en vez de eso se hace una «Nueva implementación», sale otra URL.
+
+## Si algo no anda
+
+| Lo que aparece | Qué pasa | Qué hacer |
+| --- | --- | --- |
+| `"hojasListas":false` o «Falta la hoja Parametros» | No se ejecutó `setupHojas` | Paso 2. Si al ejecutarlo da error, mirar el registro de ejecución del editor |
+| «El script no está vinculado a una planilla» | El proyecto se creó desde script.google.com | Crearlo desde la planilla: **Extensiones → Apps Script** |
+| Página de inicio de sesión de Google en vez de JSON | La implementación no tiene acceso público | Gestionar implementaciones → lápiz → **Quién tiene acceso: Cualquier usuario** |
+| Cambios del código que no se ven | La implementación sigue en la versión vieja | Gestionar implementaciones → lápiz → **Versión: Nueva versión** |
+| `TOKEN_INVALIDO` en la app | El token no coincide con el de Parametros | Copiarlo de nuevo (menú **Inventario → Ver token para la app**) |
 
 ## Probar el Web App con curl
 

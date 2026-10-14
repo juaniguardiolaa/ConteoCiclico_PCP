@@ -641,7 +641,7 @@ function cobertura(registros, posiciones, campania) {
 // Este archivo se edita acá. Datos.gs y Dominio.gs se generan con npm run apps-script, que también
 // arma conteo-ciclico.gs: el archivo único que se pega en el editor de Apps Script.
 
-const VERSION_SERVIDOR = '0.5.0';
+const VERSION_SERVIDOR = '0.5.1';
 const ZONA = 'America/Argentina/Buenos_Aires';
 
 const HOJAS = {
@@ -774,9 +774,11 @@ const ACCIONES = {
   registrar: { lectura: false, atender: accionRegistrar_ },
 };
 
-/** GET: ping y consultas (útil para probar desde el navegador o con curl). La app usa POST. */
+/** GET: ping y consultas (útil para probar desde el navegador o con curl). La app usa POST. Sin acción, es un ping. */
 function doGet(e) {
-  return responder_(atender_((e && e.parameter) || {}, 'GET'));
+  const parametros = Object.assign({}, (e && e.parameter) || {});
+  if (!parametros.accion) parametros.accion = 'ping';
+  return responder_(atender_(parametros, 'GET'));
 }
 
 /** POST con el cuerpo en JSON y Content-Type text/plain (así el navegador no hace preflight de CORS). */
@@ -817,12 +819,22 @@ function responder_(respuesta) {
 const exito_ = (datos, mensaje) => ({ ok: true, codigo: 'OK', mensaje: mensaje || '', datos });
 const falla_ = (codigo, mensaje) => ({ ok: false, codigo, mensaje });
 
+/** Responde aunque falten las hojas, para poder diagnosticar la instalación. */
 function accionPing_(datos) {
+  let hojasListas = true;
+  let tokenValido = false;
+  try {
+    tokenValido = tokenValido_(datos.token);
+  } catch (error) {
+    hojasListas = false;
+  }
   return {
     ok: true,
     codigo: 'PONG',
-    mensaje: 'El Web App responde.',
-    datos: { version: VERSION_SERVIDOR, hora: aIso_(new Date(), true), tokenValido: tokenValido_(datos.token) },
+    mensaje: hojasListas
+      ? 'El Web App responde.'
+      : 'El Web App responde, pero la planilla no tiene las hojas: ejecutá setupHojas en el editor de Apps Script.',
+    datos: { version: VERSION_SERVIDOR, hora: aIso_(new Date(), true), hojasListas, tokenValido },
   };
 }
 
@@ -938,7 +950,11 @@ function accionRegistrar_(datos) {
 // Lectura de la planilla
 
 function hoja_(nombre) {
-  const h = SpreadsheetApp.getActive().getSheetByName(nombre);
+  const libro = SpreadsheetApp.getActive();
+  if (!libro) {
+    throw new Error('El script no está vinculado a una planilla: hay que crearlo desde la planilla, con Extensiones → Apps Script.');
+  }
+  const h = libro.getSheetByName(nombre);
   if (!h) throw new Error(`Falta la hoja ${nombre}: corré «Inventario → Configurar hojas del caso».`);
   return h;
 }

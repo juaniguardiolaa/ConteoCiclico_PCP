@@ -80,6 +80,17 @@ test('Movimientos guarda fechas reales, con ID y origen CASO', () => {
   assert.equal(primera[9], 'CASO');
 });
 
+test('antes de setupHojas, el ping (o abrir la URL sola) avisa que faltan las hojas', async () => {
+  const s = cargarServidor();
+  const ping = s.get({});
+  assert.equal(ping.codigo, 'PONG');
+  assert.equal(ping.datos.hojasListas, false);
+  assert.match(ping.mensaje, /setupHojas/);
+  const prueba = await probarConexion(URL_WEB_APP, 'cualquiera', s.fetch);
+  assert.equal(prueba.ok, false);
+  assert.match(prueba.mensaje, /setupHojas/);
+});
+
 test('ping responde sin token; el resto exige el token de Parametros', () => {
   const s = servidorConfigurado();
   const ping = s.get({ accion: 'ping' });
