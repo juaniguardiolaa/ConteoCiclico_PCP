@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Etiquetas del rack TP6</title>
+  <meta name="description" content="Etiquetas QR y Code 128 de posiciones y productos-lote para el conteo cíclico del TP6, listas para imprimir en A4.">
+  <meta name="theme-color" content="#1F4F8F">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='2' width='4' height='28' fill='%231F4F8F'/%3E%3Crect x='25' y='2' width='4' height='28' fill='%231F4F8F'/%3E%3Crect x='7' y='11' width='18' height='3' fill='%23E8650F'/%3E%3Crect x='7' y='22' width='18' height='3' fill='%23E8650F'/%3E%3Crect x='10' y='4' width='12' height='7' fill='%23C9A877'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=IBM+Plex+Sans+Condensed:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/etiquetas.css">
+  <!-- Generadores de QR y Code 128, con versión fija. -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js" defer></script>
+  <script type="module" src="js/etiquetas.js"></script>
+</head>
+<body class="pagina-etiquetas">
+  <header class="encabezado no-imprimir">
+    <div class="encabezado-campania">
+      <span class="encabezado-titulo">Etiquetas del rack</span>
+      <span class="encabezado-fecha">Para imprimir en A4</span>
+    </div>
+    <a class="encabezado-volver" href="./#/ajustes">Volver a la app</a>
+  </header>
+
+  <main class="etiquetas-principal">
+    <section class="controles no-imprimir" aria-labelledby="titulo-etiquetas">
+      <h1 id="titulo-etiquetas">Etiquetas para el rack</h1>
+      <p class="bajada">
+        Cada etiqueta tiene el QR, el mismo dato en código de barras Code 128 y el texto para cargarlo a mano.
+        También se pueden escanear desde esta pantalla con el celular, para probar la app sin imprimir.
+      </p>
+
+      <form id="opciones" class="opciones-etiquetas">
+        <fieldset class="campo">
+          <legend class="campo-nombre">Qué incluir</legend>
+          <label class="opcion"><input type="checkbox" name="posiciones" checked> Posiciones del rack</label>
+          <label class="opcion"><input type="checkbox" name="productos" checked> Productos y lotes</label>
+          <label class="opcion"><input type="checkbox" name="pruebas"> Etiquetas de prueba de los controles</label>
+        </fieldset>
+        <fieldset class="campo">
+          <legend class="campo-nombre">Etiquetas de producto</legend>
+          <label class="opcion">
+            <input type="radio" name="modo" value="simulacion" checked>
+            Para la simulación: una por posición ocupada el 14/10, con su cantidad física
+          </label>
+          <label class="opcion">
+            <input type="radio" name="modo" value="catalogo">
+            Catálogo: una por cada producto-lote conocido
+          </label>
+        </fieldset>
+      </form>
+
+      <div class="mensaje advertencia">
+        <p>Imprimí al <strong>100 %</strong>, sin «ajustar a la página», para que los códigos salgan del tamaño en que se leen bien (QR de 2,6 cm). Las líneas punteadas son de corte.</p>
+      </div>
+      <button class="boton primario" type="button" id="imprimir">Imprimir o guardar como PDF</button>
+    </section>
+
+    <div id="hojas" aria-live="polite">
+      <p class="nota">Generando etiquetas…</p>
+    </div>
+  </main>
+</body>
+</html>

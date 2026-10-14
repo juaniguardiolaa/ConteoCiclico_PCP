@@ -1,0 +1,208 @@
+/* Hoja de etiquetas. Las medidas van en milímetros para que lo impreso al 100 % tenga el
+   tamaño real: QR de 26 mm o más y barras con módulos de 0,3 mm o más. Las etiquetas son
+   siempre negras sobre blanco, también con el tema oscuro, porque es lo que lee la cámara. */
+
+@page {
+  size: A4;
+  margin: 8mm;
+}
+
+.etiquetas-principal {
+  max-width: 212mm;
+  margin: 0 auto;
+  padding: 1rem 1rem 3rem;
+}
+
+.encabezado-volver {
+  color: #fff;
+  font-weight: 600;
+}
+
+.controles {
+  max-width: 34rem;
+  margin-bottom: 1.5rem;
+}
+
+.opciones-etiquetas {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.opcion {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.35rem 0;
+}
+
+.opcion input {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin: 0.15rem 0 0;
+  flex: none;
+  accent-color: var(--parante);
+}
+
+.grupo-etiquetas h2 {
+  margin: 1.5rem 0 0.75rem;
+}
+
+.grilla {
+  display: grid;
+  gap: 3mm;
+  justify-content: start;
+}
+
+.grilla-posiciones {
+  grid-template-columns: repeat(auto-fill, 62mm);
+}
+
+.grilla-productos {
+  grid-template-columns: repeat(auto-fill, 94mm);
+}
+
+.etiqueta {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5mm;
+  padding: 3mm;
+  background: #fff;
+  color: #000;
+  border: 0.3mm dashed #8a96a6;
+  break-inside: avoid;
+  font-family: var(--f-ui);
+}
+
+.etiqueta-arriba {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 3mm;
+}
+
+.etiqueta .qr {
+  flex: none;
+  width: 26mm;
+  height: 26mm;
+}
+
+.barras {
+  display: block;
+  width: 100%;
+  height: 11mm;
+}
+
+.etiqueta-texto {
+  font-size: 9pt;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+/* Posición: el mismo rótulo azul con larguero naranja que muestra la app. */
+.etiqueta-rotulo {
+  display: inline-block;
+  padding: 1mm 3mm 0.5mm;
+  background: #173c6e;
+  border-bottom: 1.6mm solid #e8650f;
+  color: #fff;
+  font-family: var(--f-rotulo);
+  font-size: 30pt;
+  font-weight: 900;
+  font-stretch: 125%;
+  line-height: 1;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.etiqueta-dato {
+  display: block;
+  margin-top: 2mm;
+  font-size: 9pt;
+  color: #333;
+}
+
+.etiqueta-material {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 1mm;
+}
+
+.etiqueta-codigo {
+  font-family: var(--f-rotulo);
+  font-size: 18pt;
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 1;
+}
+
+.etiqueta-descripcion {
+  font-size: 10pt;
+  line-height: 1.2;
+}
+
+.etiqueta-lote {
+  font-size: 12pt;
+  font-weight: 700;
+}
+
+.etiqueta-simulacion {
+  margin: 1mm -3mm -3mm;
+  padding: 1.5mm 3mm;
+  border-top: 0.3mm dashed #8a96a6;
+  font-size: 9pt;
+  background: #f3f5f8;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.etiqueta-prueba {
+  border: 0.6mm dashed #b3261e;
+}
+
+.etiqueta-prueba .etiqueta-codigo {
+  color: #b3261e;
+}
+
+@media print {
+  .no-imprimir {
+    display: none !important;
+  }
+
+  body.pagina-etiquetas {
+    background: #fff;
+  }
+
+  .etiquetas-principal {
+    max-width: none;
+    padding: 0;
+  }
+
+  .grilla {
+    justify-content: start;
+  }
+
+  .grilla-posiciones {
+    grid-template-columns: repeat(3, 62mm);
+  }
+
+  .grilla-productos {
+    grid-template-columns: repeat(2, 94mm);
+  }
+
+  .grupo-etiquetas {
+    break-before: page;
+  }
+
+  .grupo-etiquetas:first-of-type {
+    break-before: auto;
+  }
+
+  .grupo-etiquetas h2 {
+    margin: 0 0 3mm;
+    color: #000;
+    font-size: 11pt;
+  }
+}

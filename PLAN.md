@@ -11,7 +11,8 @@ Repositorio: https://github.com/juaniguardiolaa/ConteoCiclico_PCP
 | H0 · Repo y publicación | Hecho el 14/10. Pages activo. |
 | H1 · Datos y lógica de dominio | Hecho el 14/10. La conciliación da la tabla esperada. |
 | H2 · App de captura en modo demo | Hecho el 14/10: pantallas 1 a 7, escáner, mapa del rack y, adelantada, la pantalla 8 (conciliación) en modo demo. Falta la prueba con la cámara del celular (👤). |
-| H3 a H8 | Pendientes |
+| H4 · Etiquetas para imprimir | Hecho el 14/10, antes que H3, para poder probar la cámara. 28 de posición, 21 de producto para la simulación (o 22 de catálogo) y 4 de prueba de controles. Verificado: los 53 QR y los 53 Code 128 del PDF se leen a 200 ppp, y html5-qrcode lee la etiqueta impresa. Falta escanearlas con el celular (👤). |
+| H3, H5 a H8 | Pendientes |
 
 ## Qué cambia respecto del plan del 13/10
 
@@ -205,12 +206,12 @@ Cada hito termina con `npm test` en verde, una prueba a mano descrita y un commi
 - Verificación: en modo avión se cargan 3 posiciones; al volver la red se envían y no queda ninguna duplicada.
 
 ### H4 · Etiquetas para imprimir
-- Claude: `etiquetas.html` con 28 etiquetas de posición y 22 de producto-lote, con QR de 2,5 cm o más, Code 128 y texto. Agrega el QR de configuración.
+- Claude: `etiquetas.html` con 28 etiquetas de posición y las de producto-lote, con QR de 2,6 cm, Code 128 y texto. Las de producto salen en dos modos: para la simulación (21, una por posición ocupada el 14/10, con una tira de corte que dice dónde va y la cantidad física) o de catálogo (22, una por par conocido). Suma 4 etiquetas de prueba para mostrar los controles en vivo (Z9, lote mal formado, material inexistente, lote desconocido). El QR de configuración pasa a H5, cuando exista la URL del Web App.
 - 👤 Imprimir o exportar a PDF y escanear 5 etiquetas al azar.
 - Verificación: las 5 se reconocen.
 
 ### H5 · Google Sheets y Apps Script
-- Claude: `apps-script/Code.gs` con `setupHojas()` (crea las 10 hojas y carga los datos; se puede correr de nuevo sin duplicar), Web App con `doGet` (`ping`, `maestros`, `registrados`, `reconteos`, `conciliacion`) y `doPost` (`registrar`, `conciliar`). Repite las validaciones 1, 2, 3, 5, 6 y 7, usa LockService y token, y anota cada llamada en Log_API. Respuesta siempre `{ok, codigo, mensaje, datos}`. Del lado de la app, `backend/appsscript.js` y la pantalla Ajustes. Incluye la guía paso a paso y los comandos curl de prueba.
+- Claude: `apps-script/Code.gs` con `setupHojas()` (crea las 10 hojas y carga los datos; se puede correr de nuevo sin duplicar), Web App con `doGet` (`ping`, `maestros`, `registrados`, `reconteos`, `conciliacion`) y `doPost` (`registrar`, `conciliar`). Repite las validaciones 1, 2, 3, 5, 6 y 7, usa LockService y token, y anota cada llamada en Log_API. Respuesta siempre `{ok, codigo, mensaje, datos}`. Del lado de la app, `backend/appsscript.js` y la pantalla Ajustes, que muestra el QR de configuración para cargar la URL y el token en los otros celulares. Incluye la guía paso a paso y los comandos curl de prueba.
 - 👤 Con una cuenta **gmail.com** (la institucional puede bloquear el acceso público): crear el Sheet, abrir Extensiones → Apps Script, pegar los archivos, correr `setupHojas()` y autorizar. Implementar → Aplicación web, con «Ejecutar como: Yo» y «Acceso: Cualquier usuario». Cargar la URL en la app.
 - Verificación: aparecen 13, 40, 10, 28 y 22 filas. Un registro desde el celular aparece en Conteo_1410 en menos de 3 segundos. El mismo ID repetido no duplica; Z9 se rechaza; una segunda lectura de B2 da duplicado.
 

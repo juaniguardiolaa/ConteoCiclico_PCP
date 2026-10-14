@@ -39,6 +39,33 @@ export function leerEtiqueta(texto) {
   return { tipo: 'DESCONOCIDA', texto: crudo };
 }
 
+/**
+ * Etiquetas de producto para armar la simulación: una por cada posición ocupada en la foto de
+ * stock físico (Stock 1410), con la cantidad que el operario va a «contar». Si el mismo lote está
+ * en dos posiciones (PROD003 L0009 en C4 y F2) salen dos copias.
+ */
+export function etiquetasDeSimulacion(stockFisico) {
+  return stockFisico
+    .filter((s) => s.posicion && s.lote)
+    .map((s) => ({
+      posicion: s.posicion,
+      codigo: s.codigo,
+      descripcion: s.descripcion,
+      lote: s.lote,
+      cantidad: s.stock,
+      texto: textoProducto(s.codigo, s.lote),
+    }))
+    .sort((a, b) => a.posicion.localeCompare(b.posicion));
+}
+
+/** Etiquetas que existen solo para mostrar en vivo que la app rechaza o advierte. */
+export const ETIQUETAS_DE_PRUEBA = [
+  { texto: 'POS:Z9', titulo: 'Posición inexistente', control: 'POSICION_INEXISTENTE', espera: 'POSICION' },
+  { texto: 'MAT:PROD001|L005', titulo: 'Lote mal formado', control: 'LOTE_FORMATO', espera: 'PRODUCTO' },
+  { texto: 'MAT:PROD011|L0001', titulo: 'Material inexistente', control: 'MATERIAL_INEXISTENTE', espera: 'PRODUCTO' },
+  { texto: 'MAT:PROD009|L0099', titulo: 'Lote desconocido (solo advierte)', control: 'LOTE_DESCONOCIDO', espera: 'PRODUCTO' },
+];
+
 const tienePrefijo = (t) => [PREFIJO_POSICION, PREFIJO_PRODUCTO, PREFIJO_CONFIG].some((p) => t.startsWith(p));
 
 /**

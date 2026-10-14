@@ -5,6 +5,7 @@ Planificación y Control de la Producción · UTN FRH · 2026
 App web para el celular que simula el conteo cíclico del 14/10/2026: lee QR o código de barras de cada posición y de cada producto-lote, valida los datos, los envía a Google Sheets y ejecuta la conciliación contra el stock del 30/09/2026 y los movimientos del 01 al 14/10/2026.
 
 - **App:** https://juaniguardiolaa.github.io/ConteoCiclico_PCP/
+- **Etiquetas para imprimir:** https://juaniguardiolaa.github.io/ConteoCiclico_PCP/etiquetas.html
 - **Plan de desarrollo:** [PLAN.md](PLAN.md)
 
 > En desarrollo. El estado de cada hito está en el plan.
@@ -16,6 +17,8 @@ App web para el celular que simula el conteo cíclico del 14/10/2026: lee QR o c
 3. Para ver la conciliación completa sin recorrer el rack: **Ajustes → Cargar el conteo del enunciado** y después **Conciliar**.
 
 Los registros quedan guardados en el navegador de cada uno. **Ajustes → Borrar los datos de demo** empieza de cero.
+
+Para probar la cámara sin imprimir: abrir la página de etiquetas en la compu y escanearlas desde el celular con la app. Con la opción «Etiquetas de prueba de los controles» aparecen también las que la app tiene que rechazar.
 
 Controles que se pueden probar: `Z9` (posición inexistente), `B2` dos veces (duplicado), `PROD001 L005` (lote mal formado), `PROD001 L0099` (lote desconocido, solo advierte), cantidad `-12` o `1,5` (rechazadas).
 

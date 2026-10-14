@@ -38,6 +38,10 @@ export async function mostrar(contenedor, app) {
             </div>`
           : ''}
 
+        <h2>Etiquetas</h2>
+        <p>Hoja A4 con las etiquetas QR y de código de barras de las posiciones y de los productos.</p>
+        <a class="boton secundario" href="etiquetas.html">Abrir las etiquetas para imprimir</a>
+
         <h2>Versión</h2>
         <p class="nota">${VERSION}</p>
       </section>`,
