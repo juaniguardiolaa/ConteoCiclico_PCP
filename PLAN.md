@@ -8,9 +8,10 @@ Repositorio: https://github.com/juaniguardiolaa/ConteoCiclico_PCP
 
 | Hito | Estado |
 | --- | --- |
-| H0 · Repo y publicación | Hecho el 14/10. Falta activar Pages (👤). |
-| H1 · Datos y lógica de dominio | Hecho el 14/10. La conciliación da la tabla esperada; 27 tests en verde. |
-| H2 a H8 | Pendientes |
+| H0 · Repo y publicación | Hecho el 14/10. Pages activo. |
+| H1 · Datos y lógica de dominio | Hecho el 14/10. La conciliación da la tabla esperada. |
+| H2 · App de captura en modo demo | Hecho el 14/10: pantallas 1 a 7, escáner, mapa del rack y, adelantada, la pantalla 8 (conciliación) en modo demo. Falta la prueba con la cámara del celular (👤). |
+| H3 a H8 | Pendientes |
 
 ## Qué cambia respecto del plan del 13/10
 

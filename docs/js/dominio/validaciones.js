@@ -18,12 +18,24 @@ const RE_LOTE = /^L\d{4}$/;
 const bien = (extra = {}) => ({ ok: true, ...extra });
 const mal = (codigo, mensaje) => ({ ok: false, codigo, mensaje });
 
-/** Reúne los maestros y el estado de la campaña que necesitan las validaciones. */
-export function crearContexto({ posiciones, materiales, stock3009, movimientos, registros = [], campania, reconteos = [] }) {
+/**
+ * Reúne los maestros y el estado de la campaña que necesitan las validaciones.
+ * `lotes` es Maestro_Lotes ('PROD001|L0005'); si no viene, se arma con stock3009 y movimientos.
+ */
+export function crearContexto({
+  posiciones,
+  materiales,
+  lotes,
+  stock3009 = [],
+  movimientos = [],
+  registros = [],
+  campania,
+  reconteos = [],
+}) {
   return {
     posiciones: new Set(posiciones.map((p) => p.posicion ?? p)),
     materiales: new Set(materiales.map((m) => m.codigo ?? m)),
-    lotesConocidos: paresMaterialLote(stock3009, movimientos),
+    lotesConocidos: lotes ? new Set(lotes) : paresMaterialLote(stock3009, movimientos),
     registradas: posicionesRegistradas(registros, campania),
     reconteosPedidos: new Set(reconteos),
   };

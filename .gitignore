@@ -5,3 +5,4 @@ Thumbs.db
 # archivos temporales de Excel y Word abiertos
 ~$*
 .env
+.claude/

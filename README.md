@@ -9,6 +9,16 @@ App web para el celular que simula el conteo cíclico del 14/10/2026: lee QR o c
 
 > En desarrollo. El estado de cada hito está en el plan.
 
+## Probarla sin planilla (modo demo)
+
+1. Abrir la app, escribir un nombre y elegir el rol. Con **Control de inventarios** se ve también la pestaña Conciliar.
+2. **Escanear posición**: con la cámara o escribiendo la posición (`B2`). Después el producto (`PROD001 L0005`) y la cantidad.
+3. Para ver la conciliación completa sin recorrer el rack: **Ajustes → Cargar el conteo del enunciado** y después **Conciliar**.
+
+Los registros quedan guardados en el navegador de cada uno. **Ajustes → Borrar los datos de demo** empieza de cero.
+
+Controles que se pueden probar: `Z9` (posición inexistente), `B2` dos veces (duplicado), `PROD001 L005` (lote mal formado), `PROD001 L0099` (lote desconocido, solo advierte), cantidad `-12` o `1,5` (rechazadas).
+
 ## Cómo correrla en la compu
 
 Hace falta [Node.js](https://nodejs.org/) 20 o superior. No hay que instalar dependencias.
