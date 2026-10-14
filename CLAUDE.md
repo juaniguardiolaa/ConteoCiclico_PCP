@@ -23,7 +23,11 @@ envía cada registro a Google Sheets y dispara la conciliación contra el stock 
   arma `apps-script/conteo-ciclico.gs`, el único archivo que se pega en Apps Script. Dominio.gs es
   docs/js/dominio sin import/export: los módulos de dominio no pueden repetir nombres de nivel superior.
 - El servidor se prueba con `tests/simulador-google.js` (SpreadsheetApp, Utilities, LockService y
-  ContentService simulados). Si Code.gs usa un método nuevo de Google, hay que sumarlo al simulador.
+  ContentService simulados; las fórmulas se calculan con `tests/formulas-simuladas.js`). Si Code.gs
+  usa un método o una función de hoja nueva, hay que sumarlos al simulador.
+- Fórmulas en la planilla: SIEMPRE con setFormula/setFormulas (sintaxis estándar, argumentos con «,»).
+  Nunca con setValues: la planilla está en es_AR y las interpreta como tipeadas (argumentos con «;»),
+  quedan en #ERROR!. El simulador reproduce ese comportamiento.
 - Cada archivo nuevo de `docs/` va en la lista ARCHIVOS de `docs/sw.js` (lo controla un test).
 
 ## Reglas del negocio

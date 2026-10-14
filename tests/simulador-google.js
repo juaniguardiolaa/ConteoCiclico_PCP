@@ -21,6 +21,15 @@ function conFormatoLibre(objeto) {
   });
 }
 
+function tieneComaFueraDeTexto(formula) {
+  let enTexto = false;
+  for (const c of formula) {
+    if (c === '"') enTexto = !enTexto;
+    else if (c === ',' && !enTexto) return true;
+  }
+  return false;
+}
+
 const indiceColumna = (letras) => [...letras].reduce((n, c) => n * 26 + (c.charCodeAt(0) - 64), 0);
 const letraColumna = (n) => (n > 26 ? letraColumna(Math.floor((n - 1) / 26)) : '') + String.fromCharCode(65 + ((n - 1) % 26));
 
@@ -36,19 +45,24 @@ class Rango {
   getValue() {
     return this.getValues()[0][0];
   }
-  /** Como en Apps Script: un texto que empieza con «=» se guarda como fórmula. */
+  /**
+   * Como en Apps Script: un texto que empieza con «=» se toma como fórmula, pero escrita como la
+   * tipearía una persona, con la configuración regional de la planilla (es_AR: argumentos con «;»).
+   */
   setValues(valores) {
-    valores.forEach((fila, i) => fila.forEach((v, j) => this.hoja.escribir(this.fila + i, this.columna + j, v)));
+    valores.forEach((fila, i) => fila.forEach((v, j) => this.hoja.escribir(this.fila + i, this.columna + j, v, 'tipeado')));
     return conFormatoLibre(this);
   }
   setValue(valor) {
     return this.setValues([[valor]]);
   }
-  setFormula(formula) {
-    return this.setValue(formula);
-  }
+  /** setFormula y setFormulas usan la sintaxis estándar (funciones en inglés, argumentos con «,»). */
   setFormulas(formulas) {
-    return this.setValues(formulas);
+    formulas.forEach((fila, i) => fila.forEach((v, j) => this.hoja.escribir(this.fila + i, this.columna + j, v, 'formula')));
+    return conFormatoLibre(this);
+  }
+  setFormula(formula) {
+    return this.setFormulas([[formula]]);
   }
   getFormula() {
     return this.hoja.formulas.get(`${this.fila},${this.columna}`) ?? '';
@@ -80,6 +94,7 @@ class Hoja {
     this.libro = libro;
     this.celdas = []; // celdas[fila-1][columna-1]
     this.formulas = new Map(); // "fila,columna" -> fórmula
+    this.tipeadas = new Set(); // fórmulas que llegaron por setValues (se leen con la configuración es_AR)
     this.protecciones = [];
     this.reglasFormato = [];
     this.validaciones = [];
@@ -87,14 +102,17 @@ class Hoja {
   getName() {
     return this.nombre;
   }
-  escribir(fila, columna, valor) {
+  escribir(fila, columna, valor, modo = 'tipeado') {
     const clave = `${fila},${columna}`;
     this.libro.version++;
     if (typeof valor === 'string' && valor.startsWith('=')) {
       this.formulas.set(clave, valor);
+      if (modo === 'tipeado') this.tipeadas.add(clave);
+      else this.tipeadas.delete(clave);
       valor = '';
     } else {
       this.formulas.delete(clave);
+      this.tipeadas.delete(clave);
     }
     while (this.celdas.length < fila) this.celdas.push([]);
     this.celdas[fila - 1][columna - 1] = valor;
@@ -102,6 +120,8 @@ class Hoja {
   /** Valor visible de una celda: el resultado de su fórmula, el derrame de una fórmula vecina o lo escrito. */
   leerCelda(fila, columna) {
     const formula = this.formulas.get(`${fila},${columna}`);
+    // En una planilla es_AR, una coma fuera de un texto en una fórmula tipeada es un error de análisis.
+    if (formula && this.tipeadas.has(`${fila},${columna}`) && tieneComaFueraDeTexto(formula)) return '#ERROR!';
     if (formula) {
       const v = this.libro.evaluar(this, fila, columna, formula);
       if (esError(v)) return v.error;

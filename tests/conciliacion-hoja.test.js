@@ -62,6 +62,22 @@ test('las fórmulas de la hoja Conciliacion dan exactamente la tabla esperada', 
   assert.equal(filas[0][2], 'Bolso 40cm largo Negro');
 });
 
+test('las fórmulas se escriben con setFormulas: con setValues, una planilla en es_AR las deja en #ERROR!', () => {
+  const s = servidorConConteoDelEnunciado();
+  // Lo que pasó en la planilla real con la versión 0.6.0: el simulador lo reproduce.
+  const prueba = s.hoja('Resumen').getRange('E1');
+  prueba.setValues([['=SUMIFS(STOCK_CANTIDAD, STOCK_CODIGO,"PROD001")']]);
+  assert.equal(prueba.getValue(), '#ERROR!');
+  prueba.setFormula('=SUMIFS(STOCK_CANTIDAD, STOCK_CODIGO,"PROD001")');
+  s.conciliar();
+  assert.equal(prueba.getValue(), 300);
+
+  const errores = ['Conciliacion', 'Resumen'].flatMap((n) =>
+    s.hoja(n).filasDeDatos().flat().filter((v) => typeof v === 'string' && v.startsWith('#')),
+  );
+  assert.deepEqual(errores, []);
+});
+
 test('el servidor compara lo que calculó la hoja con la app y avisa que coinciden', () => {
   const r = servidorConConteoDelEnunciado().conciliar();
   assert.deepEqual(r.datos.verificacion, { coinciden: true, revisadas: 24, diferencias: [] });

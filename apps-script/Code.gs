@@ -7,7 +7,7 @@
 // Este archivo se edita acá. Datos.gs y Dominio.gs se generan con npm run apps-script, que también
 // arma conteo-ciclico.gs: el archivo único que se pega en el editor de Apps Script.
 
-const VERSION_SERVIDOR = '0.6.0';
+const VERSION_SERVIDOR = '0.6.1';
 const ZONA = 'America/Argentina/Buenos_Aires';
 
 const HOJAS = {
@@ -540,18 +540,27 @@ function escribirConciliacion_(filas) {
   }
   if (!filas.length) return;
 
-  const matriz = filas.map((f, i) => {
-    const r = i + 2;
-    const fx = formulasConciliacion_(r);
-    const previa = previas.get(f.clave) || {};
-    return [
-      fx.clave, f.codigo, fx.descripcion, f.lote, f.posicion,
-      fx.stock, fx.ingresos, fx.salidas, fx.ajustes, fx.teorico, fx.fisico, fx.diferencia, fx.tolerancia, fx.clasificacion,
-      texto_(previa.Causa), texto_(previa.Accion), texto_(previa.Aprobado_por),
-    ];
-  });
-  const n = matriz.length;
-  hoja.getRange(2, 1, n, columnas).setValues(matriz);
+  // Primero los valores y después las fórmulas, cada cosa con su método: setValues interpreta un
+  // texto con «=» como si lo tipeara alguien, con la configuración regional de la planilla (en es_AR
+  // los argumentos van con «;») y las fórmulas quedarían en #ERROR!. setFormulas usa siempre la
+  // sintaxis estándar: funciones en inglés y argumentos con «,».
+  const n = filas.length;
+  hoja.getRange(2, 1, n, columnas).setValues(
+    filas.map((f) => {
+      const previa = previas.get(f.clave) || {};
+      return [
+        '', f.codigo, '', f.lote, f.posicion,
+        '', '', '', '', '', '', '', '', '',
+        texto_(previa.Causa), texto_(previa.Accion), texto_(previa.Aprobado_por),
+      ];
+    }),
+  );
+  const fx = filas.map((_, i) => formulasConciliacion_(i + 2));
+  hoja.getRange(2, 1, n, 1).setFormulas(fx.map((f) => [f.clave]));
+  hoja.getRange(2, 3, n, 1).setFormulas(fx.map((f) => [f.descripcion]));
+  hoja.getRange(2, 6, n, 9).setFormulas(
+    fx.map((f) => [f.stock, f.ingresos, f.salidas, f.ajustes, f.teorico, f.fisico, f.diferencia, f.tolerancia, f.clasificacion]),
+  );
   hoja.getRange(2, 6, n, 8).setNumberFormat('0');
   hoja.getRange(2, 14, n, 1).setFontWeight('bold');
 
@@ -613,7 +622,12 @@ function escribirResumen_(materiales, usuario) {
   });
   filas.push(['', '', ''], ['Conciliación ejecutada', new Date(), usuario]);
 
-  hoja.getRange(2, 1, filas.length, 3).setValues(filas);
+  // Valores con setValues y fórmulas con setFormula (ver escribirConciliacion_).
+  const esFormula = (v) => typeof v === 'string' && v.startsWith('=');
+  hoja.getRange(2, 1, filas.length, 3).setValues(filas.map(([a, b, c]) => [a, esFormula(b) ? '' : b, c]));
+  filas.forEach(([, b], i) => {
+    if (esFormula(b)) hoja.getRange(i + 2, 2).setFormula(b);
+  });
   hoja.getRange('B5').setNumberFormat('0.0%');
   hoja.getRange('B8').setNumberFormat('0.0%');
   hoja.getRange(filas.length + 1, 2).setNumberFormat('dd/mm/yyyy hh:mm:ss');
