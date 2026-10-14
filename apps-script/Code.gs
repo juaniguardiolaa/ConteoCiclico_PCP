@@ -40,17 +40,7 @@ const ENCABEZADOS = {
 const HOJAS_PROTEGIDAS = [HOJAS.STOCK, HOJAS.MOVIMIENTOS, HOJAS.CONTEO, HOJAS.LOG];
 
 // ---------------------------------------------------------------------------------------------
-// Menú de la planilla
-
-function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu('Inventario')
-    .addItem('Configurar hojas del caso', 'setupHojas')
-    .addItem('Ver token para la app', 'mostrarToken')
-    .addSeparator()
-    .addItem('Reiniciar la simulación (borra conteos)', 'reiniciarSimulacion')
-    .addToUi();
-}
+// Menú de la planilla. setupHojas va primera: es la que el editor elige por defecto en «Ejecutar».
 
 /**
  * Crea las 10 hojas y carga los datos del caso. Se puede correr de nuevo sin duplicar nada:
@@ -102,6 +92,16 @@ function setupHojas() {
     `materiales: ${hoja_(HOJAS.MATERIALES).getLastRow() - 1}, posiciones: ${hoja_(HOJAS.POSICIONES).getLastRow() - 1}.`;
   avisarEnPlanilla_(resumen);
   return resumen;
+}
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('Inventario')
+    .addItem('Configurar hojas del caso', 'setupHojas')
+    .addItem('Ver token para la app', 'mostrarToken')
+    .addSeparator()
+    .addItem('Reiniciar la simulación (borra conteos)', 'reiniciarSimulacion')
+    .addToUi();
 }
 
 function mostrarToken() {

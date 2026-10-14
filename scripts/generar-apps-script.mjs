@@ -30,18 +30,21 @@ export function generarDominio() {
   );
 }
 
+// Code.gs va primero para que setupHojas sea la primera función del archivo: es la que el editor de
+// Apps Script ofrece por defecto en «Ejecutar». El orden no afecta: lo de Dominio.gs y Datos.gs solo
+// se usa cuando se llama a una función, cuando ya está todo cargado.
 export function generarPaquete(dominio = generarDominio()) {
   const separador = (nombre) => `\n// ${'='.repeat(90)}\n// ${nombre}\n// ${'='.repeat(90)}\n\n`;
   return (
     '// Conteo cíclico TP6: código completo del Web App y del menú de la planilla.\n' +
     '// Archivo generado: pegarlo entero en el editor de Apps Script (Extensiones > Apps Script).\n' +
     '// Las partes se editan por separado en apps-script/ del repositorio y se juntan con npm run apps-script.\n' +
-    separador('Datos.gs') +
-    leer('apps-script/Datos.gs') +
+    separador('Code.gs') +
+    leer('apps-script/Code.gs') +
     separador('Dominio.gs') +
     dominio +
-    separador('Code.gs') +
-    leer('apps-script/Code.gs')
+    separador('Datos.gs') +
+    leer('apps-script/Datos.gs')
   );
 }
 

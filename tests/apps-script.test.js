@@ -44,6 +44,11 @@ test('el archivo para pegar en Apps Script está al día con docs/js/dominio y a
   assert.equal(leer('apps-script/conteo-ciclico.gs'), generarPaquete(), 'correr npm run apps-script');
 });
 
+test('setupHojas es la primera función del archivo para pegar (la que el editor ofrece en «Ejecutar»)', () => {
+  const paquete = readFileSync(new URL('../apps-script/conteo-ciclico.gs', import.meta.url), 'utf8');
+  assert.equal(/^function (\w+)/m.exec(paquete)[1], 'setupHojas');
+});
+
 test('setupHojas crea las 10 hojas con los datos del caso y se puede correr de nuevo sin duplicar', () => {
   const s = cargarServidor();
   s.contexto.setupHojas();
