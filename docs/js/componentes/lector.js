@@ -5,6 +5,12 @@ import { html, pintar, vibrar } from '../ui.js';
 
 const ID_CAMARA = 'lector-camara';
 
+// html5-qrcode analiza cada cuadro al tamaño con que el video ocupa la página. A ~360 px de ancho
+// (un celular) las barras finas del Code 128 quedan en menos de 2 px y no se leen. Por eso el video
+// ocupa 1280 px de ancho en la página y se achica con CSS (transform) para que se vea en pantalla:
+// la librería mide el ancho de diseño, que el transform no cambia, y analiza la imagen completa.
+const ANCHO_ANALISIS = 1280;
+
 function mensajeCamara(error) {
   const texto = String(error?.name ?? error ?? '');
   if (/NotAllowed|Permission/i.test(texto)) {
@@ -29,7 +35,10 @@ export function montarLector(contenedor, { etiquetaManual, ejemplo, alLeer }) {
     contenedor,
     html`
       <div class="lector">
-        <div class="lector-camara" id="${ID_CAMARA}"></div>
+        <div class="lector-marco">
+          <div class="lector-camara" id="${ID_CAMARA}" style="width: ${ANCHO_ANALISIS}px"></div>
+          <div class="lector-guia" aria-hidden="true"></div>
+        </div>
         <p class="lector-estado" aria-live="polite">Abriendo la cámara…</p>
       </div>
       <form class="lector-manual" autocomplete="off">
@@ -44,6 +53,11 @@ export function montarLector(contenedor, { etiquetaManual, ejemplo, alLeer }) {
 
   const estado = contenedor.querySelector('.lector-estado');
   const formulario = contenedor.querySelector('.lector-manual');
+  const marco = contenedor.querySelector('.lector-marco');
+  const camara = contenedor.querySelector('.lector-camara');
+  const ajustarEscala = () => camara.style.setProperty('--escala', String(marco.clientWidth / ANCHO_ANALISIS));
+  ajustarEscala();
+  window.addEventListener('resize', ajustarEscala);
   let lector = null;
   let escuchando = true;
   let detenido = false;
@@ -81,9 +95,9 @@ export function montarLector(contenedor, { etiquetaManual, ejemplo, alLeer }) {
         { facingMode: 'environment' },
         {
           fps: 10,
-          aspectRatio: 4 / 3,
-          // Recuadro ancho: sirve para el QR y para el código de barras.
-          qrbox: (ancho, alto) => ({ width: Math.floor(ancho * 0.8), height: Math.floor(Math.min(alto * 0.6, ancho * 0.8)) }),
+          // Sin qrbox (el recuadro también achica la imagen): se analiza el cuadro completo, en HD si
+          // la cámara lo permite. La guía que ve el operario es la de .lector-guia (CSS).
+          videoConstraints: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
         },
         (texto) => {
           if (!escuchando) return;
@@ -109,6 +123,7 @@ export function montarLector(contenedor, { etiquetaManual, ejemplo, alLeer }) {
   async function detener() {
     detenido = true;
     escuchando = false;
+    window.removeEventListener('resize', ajustarEscala);
     const instancia = lector;
     lector = null;
     if (!instancia) return;

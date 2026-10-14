@@ -529,15 +529,41 @@ input.cantidad-grande {
   border-radius: 0.5rem;
 }
 
+/* El video mide 1280 px de ancho en la página (ver lector.js) y se achica al ancho del marco. */
+.lector-marco {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  background: #000;
+}
+
 .lector-camara {
-  width: 100%;
-  min-height: 12rem;
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  transform: scale(var(--escala, 0.28));
+  transform-origin: 0 0;
 }
 
 .lector-camara video {
   display: block;
   width: 100% !important;
   height: auto !important;
+}
+
+/* Cartel «Scanner paused» de html5-qrcode: el estado ya se explica abajo, en castellano. */
+.lector-camara > div {
+  display: none !important;
+}
+
+/* Guía de encuadre: solo visual, la lectura usa la imagen completa. */
+.lector-guia {
+  position: absolute;
+  inset: 22% 8%;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
 }
 
 .lector-estado {
