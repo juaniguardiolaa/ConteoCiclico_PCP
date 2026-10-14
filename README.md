@@ -18,6 +18,12 @@ npm run dev     # abre la app en http://localhost:8080
 npm test        # corre los tests de la lógica de dominio
 ```
 
+Si cambia el Excel de `data/`, `npm install` y después `npm run datos` regeneran `docs/js/datos/caso.js` y `apps-script/Datos.gs`. Es el único caso en que hace falta instalar algo.
+
+## Resultado de la conciliación con los datos del caso
+
+24 claves (código, lote y posición): 13 coinciden y 11 tienen diferencia, con una diferencia neta de −25 unidades. La tabla completa y las definiciones están en [PLAN.md](PLAN.md#resultado-esperado), y el test `tests/conciliacion.test.js` la verifica en cada push.
+
 ## Estructura
 
 | Carpeta | Qué hay |

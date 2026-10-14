@@ -4,6 +4,14 @@
 
 Repositorio: https://github.com/juaniguardiolaa/ConteoCiclico_PCP
 
+## Estado
+
+| Hito | Estado |
+| --- | --- |
+| H0 · Repo y publicación | Hecho el 14/10. Falta activar Pages (👤). |
+| H1 · Datos y lógica de dominio | Hecho el 14/10. La conciliación da la tabla esperada; 27 tests en verde. |
+| H2 a H8 | Pendientes |
+
 ## Qué cambia respecto del plan del 13/10
 
 | Cambio | Por qué |
@@ -134,13 +142,15 @@ Stock 1410 del Excel **no se carga en el Sheet**: es la realidad física que se 
 
 ## Etiquetas y validaciones
 
-| Etiqueta | Contenido | Expresión regular | Cantidad |
+| Etiqueta | Contenido | Formato que se reconoce | Cantidad |
 | --- | --- | --- | --- |
-| Posición | `POS:B2` | `^POS:([A-G][1-4])$` | 28 |
-| Producto-lote | `MAT:PROD001\|L0005` | `^MAT:(PROD\d{3})\|(L\d{4})$` | 22 |
-| Configuración (opcional) | `CFG:` + URL del Web App + token | `^CFG:` | 1, la tiene Control |
+| Posición | `POS:B2` | `^POS:([A-Z]{1,2}\d{1,2})$` | 28 |
+| Producto-lote | `MAT:PROD001\|L0005` | `^MAT:([A-Z0-9]+)\|([A-Z0-9]*)$` | 22 |
+| Configuración (opcional) | `CFG:{"url":…,"token":…}` | `^CFG:` + JSON | 1, la tiene Control |
 
 Cada etiqueta lleva el QR, el mismo texto en Code 128 y el texto legible para cargarlo a mano.
+
+El formato se reconoce en sentido amplio y después se valida contra los maestros. Así `POS:Z9` da «posición inexistente» (validación 1) y `MAT:PROD001|L005` da «lote con formato incorrecto» (validación 3), en vez de un genérico «etiqueta inválida». A mano se puede escribir sin prefijo (`B2`, `PROD001 L0005`).
 
 | # | Regla | Si falla | Dónde |
 | --- | --- | --- | --- |

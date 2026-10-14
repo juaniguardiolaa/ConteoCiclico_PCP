@@ -35,9 +35,9 @@ envía cada registro a Google Sheets y dispara la conciliación contra el stock 
 - Tipos de movimiento: los 6 del caso más Transferencia_Posicion.
 
 ## Etiquetas
-- Posición: `POS:B2` -> `^POS:([A-G][1-4])$`
-- Producto-lote: `MAT:PROD001|L0005` -> `^MAT:(PROD\d{3})\|(L\d{4})$`
-- Configuración: `CFG:` + URL del Web App + token (opcional)
+- Posición: `POS:B2`. Producto-lote: `MAT:PROD001|L0005`. Configuración: `CFG:{"url":…,"token":…}`.
+- `dominio/etiquetas.js` reconoce el formato en sentido amplio; si la posición, el material
+  o el lote son válidos lo decide `dominio/validaciones.js` contra los maestros.
 
 ## Validaciones (app y servidor)
 1 posición existe · 2 posición no registrada en la campaña (salvo RECONTEO) ·
