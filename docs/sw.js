@@ -13,6 +13,7 @@ const ARCHIVOS = [
   "./",
   "index.html",
   "etiquetas.html",
+  "diagrama/index.html",
   "css/app.css",
   "css/etiquetas.css",
   "js/almacen.js",

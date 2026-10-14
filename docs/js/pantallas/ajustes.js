@@ -84,8 +84,16 @@ export async function mostrar(contenedor, app) {
         <p>Hoja A4 con las etiquetas QR y de código de barras de las posiciones y de los productos.</p>
         <a class="boton secundario" href="etiquetas.html">Abrir las etiquetas para imprimir</a>
 
+        <h2>Documentación</h2>
+        <div class="acciones">
+          <a class="boton secundario" href="diagrama/">Diagrama de flujo del proceso</a>
+          <a class="boton secundario" href="https://github.com/juaniguardiolaa/ConteoCiclico_PCP#readme" target="_blank" rel="noopener">
+            Guía de uso y código en GitHub
+          </a>
+        </div>
+
         <h2>Versión</h2>
-        <p class="nota">${VERSION}</p>
+        <p class="nota">${VERSION}. TP6, Planificación y Control de la Producción, UTN FRH 2026.</p>
       </section>`,
   );
 
