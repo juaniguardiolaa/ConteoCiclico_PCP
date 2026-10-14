@@ -13,7 +13,8 @@ Repositorio: https://github.com/juaniguardiolaa/ConteoCiclico_PCP
 | H2 · App de captura en modo demo | Hecho el 14/10: pantallas 1 a 7, escáner, mapa del rack y, adelantada, la pantalla 8 (conciliación) en modo demo. Falta la prueba con la cámara del celular (👤). |
 | H4 · Etiquetas para imprimir | Hecho el 14/10, antes que H3, para poder probar la cámara. 28 de posición, 21 de producto para la simulación (o 22 de catálogo) y 4 de prueba de controles. Verificado: los 53 QR y los 53 Code 128 del PDF se leen a 200 ppp, y html5-qrcode lee la etiqueta impresa. Falta escanearlas con el celular (👤). |
 | H3 · Cola sin conexión | Hecho el 14/10. Cola con espera creciente y envío al volver la red, avisos de pendientes y rechazados, interruptor para simular el corte en modo demo y service worker para abrir la app sin red. Verificado en el navegador: 3 posiciones sin conexión se envían al volver sin duplicar, y la app recarga con la red cortada. |
-| H5 a H8 | Pendientes. H5 espera la cuenta gmail del grupo (👤). |
+| H5 · Google Sheets y Apps Script | Código hecho el 14/10 y probado con una planilla simulada en Node (13 tests del servidor y del contrato con la app). La lógica del servidor se genera desde `docs/js/dominio`, así valida y concilia igual que la app. Falta instalarlo en la cuenta juaniguardiola85@gmail.com siguiendo [apps-script/INSTALAR.md](apps-script/INSTALAR.md) (👤). |
+| H6 a H8 | Pendientes |
 
 ## Qué cambia respecto del plan del 13/10
 
@@ -212,7 +213,7 @@ Cada hito termina con `npm test` en verde, una prueba a mano descrita y un commi
 - Verificación: las 5 se reconocen.
 
 ### H5 · Google Sheets y Apps Script
-- Claude: `apps-script/Code.gs` con `setupHojas()` (crea las 10 hojas y carga los datos; se puede correr de nuevo sin duplicar), Web App con `doGet` (`ping`, `maestros`, `registrados`, `reconteos`, `conciliacion`) y `doPost` (`registrar`, `conciliar`). Repite las validaciones 1, 2, 3, 5, 6 y 7, usa LockService y token, y anota cada llamada en Log_API. Respuesta siempre `{ok, codigo, mensaje, datos}`. Del lado de la app, `backend/appsscript.js` y la pantalla Ajustes, que muestra el QR de configuración para cargar la URL y el token en los otros celulares. Incluye la guía paso a paso y los comandos curl de prueba.
+- Claude: `apps-script/Code.gs` con `setupHojas()` (crea las 10 hojas y carga los datos; se puede correr de nuevo sin duplicar) y el Web App. La app llama todo por `doPost` (`ping`, `parametros`, `maestros`, `estado`, `conciliacion`, `registrar`); `doGet` responde las consultas para probar desde el navegador o con curl. Las validaciones y la conciliación del servidor son las mismas funciones de `docs/js/dominio`, convertidas por `npm run apps-script` en `Dominio.gs`, y todo se junta en `apps-script/conteo-ciclico.gs`, el único archivo que se pega en Apps Script. Repite las validaciones 1, 2, 3, 5, 6 y 7, usa LockService y token, y anota cada llamada en Log_API. Respuesta siempre `{ok, codigo, mensaje, datos}`. Del lado de la app, `backend/appsscript.js` y la pantalla Ajustes, que muestra el QR de configuración para cargar la URL y el token en los otros celulares. Incluye la guía paso a paso y los comandos curl de prueba.
 - 👤 Con una cuenta **gmail.com** (la institucional puede bloquear el acceso público): crear el Sheet, abrir Extensiones → Apps Script, pegar los archivos, correr `setupHojas()` y autorizar. Implementar → Aplicación web, con «Ejecutar como: Yo» y «Acceso: Cualquier usuario». Cargar la URL en la app.
 - Verificación: aparecen 13, 40, 10, 28 y 22 filas. Un registro desde el celular aparece en Conteo_1410 en menos de 3 segundos. El mismo ID repetido no duplica; Z9 se rechaza; una segunda lectura de B2 da duplicado.
 
@@ -324,9 +325,9 @@ Tomadas el 14/10:
 - Stack HTML + JavaScript sin build.
 - Repo público `ConteoCiclico_PCP`.
 - Se sube el Excel del caso a `data/`.
+- La planilla y el Web App son de la cuenta juaniguardiola85@gmail.com.
 
 Pendientes:
 
-1. **Cuenta de Google:** cuál gmail del grupo va a ser dueña del Sheet y del Web App (hace falta para H5).
-2. **Exactitud principal:** por clave (54,2 %) o por posición (60,7 %). El informe tiene que dejar escrita la definición elegida.
-3. **Rúbrica:** el criterio 6 vale 2,0 pero su escala llega a 1,0, y la fórmula habla de 7 criterios cuando hay 6. Conviene consultarlo en clase.
+1. **Exactitud principal:** por clave (54,2 %) o por posición (60,7 %). El informe tiene que dejar escrita la definición elegida.
+2. **Rúbrica:** el criterio 6 vale 2,0 pero su escala llega a 1,0, y la fórmula habla de 7 criterios cuando hay 6. Conviene consultarlo en clase.

@@ -68,11 +68,12 @@ const app = {
   /** Trae el estado de la campaña. Sin conexión usa el último conocido; siempre suma la cola. */
   async refrescar() {
     const campania = this.sesion.campania;
+    const clave = `estadoCache-${this.backend.modo}`;
     try {
       this.estadoServidor = await this.backend.estado(campania);
-      almacen.guardar('estadoCache', { campania, ...this.estadoServidor });
+      almacen.guardar(clave, { campania, ...this.estadoServidor });
     } catch {
-      const cache = almacen.leer('estadoCache');
+      const cache = almacen.leer(clave);
       this.estadoServidor ??=
         cache?.campania === campania ? { registros: cache.registros, reconteos: cache.reconteos } : { registros: [], reconteos: [] };
     }
@@ -109,6 +110,12 @@ const app = {
 
   material(codigo) {
     return this.maestros.materiales.find((m) => m.codigo === codigo);
+  },
+
+  /** Guarda la conexión elegida en Ajustes y reinicia la app con ese backend. */
+  cambiarConexion(config) {
+    almacen.guardar('config', config);
+    location.reload();
   },
 
   avisar,
@@ -213,6 +220,7 @@ async function arrancar() {
   app.backend = crearBackend(app.config, almacen);
   app.cola = crearCola({
     almacen,
+    nombre: app.backend.modo,
     enviar: (registro) => app.backend.registrar(registro),
     alCambiar: pintarEncabezado,
   });

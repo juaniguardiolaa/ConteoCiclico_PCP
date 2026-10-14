@@ -7,6 +7,7 @@ App web para el celular que simula el conteo cíclico del 14/10/2026: lee QR o c
 - **App:** https://juaniguardiolaa.github.io/ConteoCiclico_PCP/
 - **Etiquetas para imprimir:** https://juaniguardiolaa.github.io/ConteoCiclico_PCP/etiquetas.html
 - **Plan de desarrollo:** [PLAN.md](PLAN.md)
+- **Instalar la planilla y el Web App:** [apps-script/INSTALAR.md](apps-script/INSTALAR.md)
 
 > En desarrollo. El estado de cada hito está en el plan.
 
@@ -34,6 +35,8 @@ npm test        # corre los tests de la lógica de dominio
 ```
 
 Si cambia el Excel de `data/`, `npm install` y después `npm run datos` regeneran `docs/js/datos/caso.js` y `apps-script/Datos.gs`. Es el único caso en que hace falta instalar algo.
+
+Si cambia algo de `docs/js/dominio/` o de `apps-script/Code.gs`, `npm run apps-script` vuelve a armar `apps-script/conteo-ciclico.gs` (el archivo que se pega en Apps Script). Los tests avisan si alguien se olvida. El servidor se prueba en Node con una planilla simulada (`tests/simulador-google.js`), sin publicar nada.
 
 ## Resultado de la conciliación con los datos del caso
 

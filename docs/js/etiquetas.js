@@ -2,29 +2,10 @@
 // de producto-lote», que lee los maestros. QR con qrcode-generator y Code 128 con JsBarcode.
 import { almacen } from './almacen.js';
 import { crearBackend } from './backend/index.js';
+import { qrSVG } from './componentes/qr.js';
 import { CASO } from './datos/caso.js';
 import { ETIQUETAS_DE_PRUEBA, etiquetasDeSimulacion, textoPosicion, textoProducto } from './dominio/etiquetas.js';
 import { crudo, entero, html, pintar } from './ui.js';
-
-/** QR como SVG propio (módulos negros sobre blanco, con zona de silencio de 4 módulos). */
-function qrSVG(texto) {
-  const qr = window.qrcode(0, 'M');
-  qr.addData(texto);
-  qr.make();
-  const n = qr.getModuleCount();
-  const borde = 4;
-  let trazo = '';
-  for (let fila = 0; fila < n; fila++) {
-    for (let col = 0; col < n; col++) {
-      if (qr.isDark(fila, col)) trazo += `M${col + borde} ${fila + borde}h1v1h-1z`;
-    }
-  }
-  const lado = n + borde * 2;
-  return crudo(
-    `<svg class="qr" viewBox="0 0 ${lado} ${lado}" shape-rendering="crispEdges" aria-hidden="true">` +
-      `<rect width="${lado}" height="${lado}" fill="#fff"/><path d="${trazo}" fill="#000"/></svg>`,
-  );
-}
 
 /** Code 128 como SVG que se estira al ancho de la etiqueta (las barras mantienen su proporción). */
 function barrasSVG(texto) {

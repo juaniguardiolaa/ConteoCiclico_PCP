@@ -19,6 +19,12 @@ envía cada registro a Google Sheets y dispara la conciliación contra el stock 
   `{ok, codigo, mensaje, datos}`.
 - `docs/js/backend/appsscript.js` y `docs/js/backend/demo.js` exponen las mismas funciones;
   las pantallas no dependen de cuál está activa.
+- Servidor: `apps-script/Code.gs` (a mano) + `Datos.gs` y `Dominio.gs` (generados). `npm run apps-script`
+  arma `apps-script/conteo-ciclico.gs`, el único archivo que se pega en Apps Script. Dominio.gs es
+  docs/js/dominio sin import/export: los módulos de dominio no pueden repetir nombres de nivel superior.
+- El servidor se prueba con `tests/simulador-google.js` (SpreadsheetApp, Utilities, LockService y
+  ContentService simulados). Si Code.gs usa un método nuevo de Google, hay que sumarlo al simulador.
+- Cada archivo nuevo de `docs/` va en la lista ARCHIVOS de `docs/sw.js` (lo controla un test).
 
 ## Reglas del negocio
 - Una posición guarda un solo producto y un solo lote.

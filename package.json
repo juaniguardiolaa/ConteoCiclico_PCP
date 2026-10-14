@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "node scripts/servidor.mjs",
     "test": "node --test",
-    "datos": "node scripts/exportar-datos.mjs"
+    "datos": "node scripts/exportar-datos.mjs && node scripts/generar-apps-script.mjs",
+    "apps-script": "node scripts/generar-apps-script.mjs"
   },
   "devDependencies": {
     "exceljs": "4.4.0"

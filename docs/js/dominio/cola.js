@@ -8,15 +8,16 @@
 // Si el servidor rechaza el registro por una regla de negocio (por ejemplo, otro operario ya contó
 // esa posición mientras este estaba sin red), no se reintenta: pasa a «rechazados» para avisarle.
 
-/** Respuestas del servidor que no son culpa del registro y conviene reintentar. */
-const TRANSITORIOS = new Set(['SIN_CONEXION', 'ERROR_SERVIDOR', 'OCUPADO', 'TIEMPO_AGOTADO']);
-
-const CLAVE_COLA = 'cola';
-const CLAVE_RECHAZOS = 'cola-rechazados';
+/**
+ * Respuestas del servidor que no son culpa del registro y conviene reintentar. Con el token mal
+ * cargado tampoco se descarta nada: se corrige en Ajustes y la cola se envía sola.
+ */
+const TRANSITORIOS = new Set(['SIN_CONEXION', 'ERROR_SERVIDOR', 'OCUPADO', 'TIEMPO_AGOTADO', 'TOKEN_INVALIDO']);
 
 /**
  * @param {object} opciones
  * @param {{leer:Function, guardar:Function}} opciones.almacen  dónde se guarda la cola (localStorage)
+ * @param {string} [opciones.nombre='demo']  una cola por backend: lo cargado en modo demo nunca llega a la planilla
  * @param {(registro:object) => Promise<{ok:boolean, codigo:string, mensaje:string}>} opciones.enviar
  * @param {() => number} [opciones.ahora]          reloj en ms (se reemplaza en los tests)
  * @param {number} [opciones.esperaBase=2000]      espera después del primer fallo
@@ -25,12 +26,15 @@ const CLAVE_RECHAZOS = 'cola-rechazados';
  */
 export function crearCola({
   almacen,
+  nombre = 'demo',
   enviar,
   ahora = () => Date.now(),
   esperaBase = 2000,
   esperaMaxima = 60000,
   alCambiar = () => {},
 }) {
+  const CLAVE_COLA = `cola-${nombre}`;
+  const CLAVE_RECHAZOS = `cola-${nombre}-rechazados`;
   const leerCola = () => almacen.leer(CLAVE_COLA, []);
   const leerRechazos = () => almacen.leer(CLAVE_RECHAZOS, []);
   const guardarCola = (cola) => {
