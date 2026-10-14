@@ -24,8 +24,10 @@ async function llamarWebApp(url, cuerpo, fetchFn) {
 }
 
 export function crearBackendAppsScript({ url, token }, almacen, fetchFn = (...a) => globalThis.fetch(...a)) {
-  const usuario = () => almacen.leer('sesion')?.usuario ?? '';
-  const llamar = (accion, datos = {}) => llamarWebApp(url, { accion, token, usuario: usuario(), ...datos }, fetchFn);
+  // Usuario y rol van en cada llamada: quedan en Log_API y el servidor controla quién puede conciliar.
+  const sesion = () => almacen.leer('sesion') ?? {};
+  const llamar = (accion, datos = {}) =>
+    llamarWebApp(url, { accion, token, usuario: sesion().usuario ?? '', rol: sesion().rol ?? '', ...datos }, fetchFn);
 
   /** Para consultas: si el servidor responde con error, se lanza (la app usa lo último guardado). */
   const datosDe = async (accion, extra) => {
@@ -45,9 +47,10 @@ export function crearBackendAppsScript({ url, token }, almacen, fetchFn = (...a)
     /** Sin red lanza (la cola reintenta); un rechazo del servidor vuelve como { ok: false, codigo, mensaje }. */
     registrar: (registro) => llamar('registrar', { registro }),
 
-    async conciliar(campania) {
-      const r = await llamar('conciliacion', { campania });
-      return r.ok ? { ok: true, ...r.datos } : r;
+    /** Escribe la conciliación en la hoja (fórmulas) y devuelve el resultado y la verificación hoja contra app. */
+    async conciliar(campania, { forzar = false } = {}) {
+      const r = await llamar('conciliar', { campania, forzar });
+      return r.ok ? { ok: true, mensaje: r.mensaje, ...r.datos } : r;
     },
   };
 }

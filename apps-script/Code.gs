@@ -7,7 +7,7 @@
 // Este archivo se edita acá. Datos.gs y Dominio.gs se generan con npm run apps-script, que también
 // arma conteo-ciclico.gs: el archivo único que se pega en el editor de Apps Script.
 
-const VERSION_SERVIDOR = '0.5.1';
+const VERSION_SERVIDOR = '0.6.0';
 const ZONA = 'America/Argentina/Buenos_Aires';
 
 const HOJAS = {
@@ -38,6 +38,27 @@ const ENCABEZADOS = {
 
 // Hojas con datos que no se deberían tocar a mano: avisan antes de editar.
 const HOJAS_PROTEGIDAS = [HOJAS.STOCK, HOJAS.MOVIMIENTOS, HOJAS.CONTEO, HOJAS.LOG];
+
+// Listas desplegables de la hoja Conciliacion (análisis de diferencias, Hoja 2 del diagrama).
+const CAUSAS = [
+  'Error de conteo',
+  'Error de ubicación',
+  'Movimiento sin registrar',
+  'Movimiento mal cargado',
+  'Merma o rotura',
+  'Retorno no ubicado',
+  'Otra',
+];
+const ACCIONES_DIFERENCIA = ['Reconteo', 'Transferencia', 'Corrección de movimiento', 'Ajuste'];
+
+// Colores de cada clasificación (los mismos de la app).
+const COLORES_CLASIFICACION = {
+  OK: '#e1f2e8',
+  FALTANTE: '#fbe4e2',
+  SOBRANTE: '#e2ecf8',
+  UBICACION: '#fdebdd',
+  NO_REGISTRADO: '#efe8f8',
+};
 
 // ---------------------------------------------------------------------------------------------
 // Menú de la planilla. setupHojas va primera: es la que el editor elige por defecto en «Ejecutar».
@@ -100,8 +121,65 @@ function onOpen() {
     .addItem('Configurar hojas del caso', 'setupHojas')
     .addItem('Ver token para la app', 'mostrarToken')
     .addSeparator()
+    .addItem('Ejecutar conciliación', 'ejecutarConciliacion')
+    .addSeparator()
+    .addItem('Cargar el conteo del enunciado (prueba)', 'cargarConteoDePrueba')
     .addItem('Reiniciar la simulación (borra conteos)', 'reiniciarSimulacion')
     .addToUi();
+}
+
+/**
+ * Diagrama, Hoja 2: «¿Se relevaron todas las posiciones?» y, si sí (o si se acepta conciliar con lo
+ * relevado), conciliación con fórmulas en la hoja Conciliacion y resumen en la hoja Resumen.
+ */
+function ejecutarConciliacion() {
+  const ui = SpreadsheetApp.getUi();
+  const p = leerParametros_();
+  const posiciones = leerPosiciones_().map((x) => x.posicion);
+  const cob = cobertura(leerRegistros_(), posiciones, p.CAMPANIA_ACTIVA);
+  let forzar = false;
+  if (cob.faltantes.length) {
+    const respuesta = ui.alert(
+      'Faltan posiciones por relevar',
+      `Faltan ${cob.faltantes.length} de ${cob.total} posiciones: ${cob.faltantes.join(', ')}.\n\n¿Conciliar igual con lo relevado hasta ahora?`,
+      ui.ButtonSet.YES_NO,
+    );
+    if (respuesta !== ui.Button.YES) return;
+    forzar = true;
+  }
+  const resultado = conciliarEnHoja_({ forzar, usuario: 'Planilla (menú Inventario)' });
+  SpreadsheetApp.getActive().setActiveSheet(hoja_(HOJAS.CONCILIACION));
+  avisarEnPlanilla_(resultado.mensaje);
+}
+
+/**
+ * Carga en Conteo_1410 el stock físico del 14/10 del enunciado, como si lo hubieran contado con la app.
+ * Sirve para verificar la conciliación antes de la simulación. Reemplaza los conteos que haya.
+ */
+function cargarConteoDePrueba() {
+  const ui = SpreadsheetApp.getUi();
+  const respuesta = ui.alert(
+    'Cargar el conteo del enunciado',
+    'Se borran los conteos de Conteo_1410 y se cargan las 28 posiciones con el stock físico del 14/10 del enunciado. ¿Seguir?',
+    ui.ButtonSet.YES_NO,
+  );
+  if (respuesta !== ui.Button.YES) return;
+  const p = leerParametros_();
+  const hoja = hoja_(HOJAS.CONTEO);
+  if (hoja.getLastRow() > 1) hoja.getRange(2, 1, hoja.getLastRow() - 1, hoja.getMaxColumns()).clearContent();
+  const registros = registrosDesdeStockFisico(
+    DATOS_CASO.stock1410,
+    leerPosiciones_().map((x) => x.posicion),
+    {
+      campania: p.CAMPANIA_ACTIVA,
+      usuario: 'Prueba con Stock 1410',
+      rol: 'CONTROL',
+      fechaHora: aIso_(new Date(), true),
+      dispositivo: 'Planilla (prueba)',
+    },
+  );
+  hoja.getRange(2, 1, registros.length, ENCABEZADOS.Conteo_1410.length).setValues(registros.map(filaDeRegistro_));
+  avisarEnPlanilla_(`Se cargaron las ${registros.length} posiciones del enunciado. Ahora: Inventario → Ejecutar conciliación.`);
 }
 
 function mostrarToken() {
@@ -138,6 +216,7 @@ const ACCIONES = {
   estado: { lectura: true, atender: accionEstado_ },
   conciliacion: { lectura: true, atender: accionConciliacion_ },
   registrar: { lectura: false, atender: accionRegistrar_ },
+  conciliar: { lectura: false, atender: accionConciliar_ },
 };
 
 /** GET: ping y consultas (útil para probar desde el navegador o con curl). La app usa POST. Sin acción, es un ping. */
@@ -227,7 +306,21 @@ function accionEstado_(datos) {
   });
 }
 
-/** Conciliación calculada con la misma función que la app (las fórmulas de la hoja llegan en H6). */
+/** Desde la app (pantalla Conciliación): escribe la conciliación en la hoja. Solo Control o Jefe de almacén. */
+function accionConciliar_(datos) {
+  if (!['CONTROL', 'SUPERVISOR'].includes(texto_(datos.rol))) {
+    return falla_('ROL_NO_AUTORIZADO', 'Solo Control de inventarios o el Jefe de almacén pueden ejecutar la conciliación.');
+  }
+  const candado = LockService.getScriptLock();
+  if (!candado.tryLock(20000)) return falla_('OCUPADO', 'La planilla está ocupada; probá de nuevo en unos segundos.');
+  try {
+    return conciliarEnHoja_({ forzar: datos.forzar === true, usuario: texto_(datos.usuario) });
+  } finally {
+    candado.releaseLock();
+  }
+}
+
+/** Conciliación calculada con la misma función que la app, sin escribir la hoja (consulta). */
 function accionConciliacion_(datos) {
   const p = leerParametros_();
   const campania = datos.campania || p.CAMPANIA_ACTIVA;
@@ -290,26 +383,258 @@ function accionRegistrar_(datos) {
         .filter((r) => r.estado === 'VALIDO' && r.campania === campania && r.posicion === registro.posicion)
         .forEach((r) => hoja.getRange(r._fila, columnaEstado).setValue('REEMPLAZADO'));
     }
-    hoja.appendRow([
-      registro.id,
-      deIso_(registro.fechaHora),
-      registro.usuario,
-      registro.rol,
-      registro.campania,
-      registro.tipo,
-      registro.posicion,
-      registro.codigo,
-      registro.lote,
-      registro.cantidad,
-      registro.vacia ? 'SI' : 'NO',
-      'VALIDO',
-      registro.dispositivo,
-      new Date(),
-    ]);
+    hoja.appendRow(filaDeRegistro_(registro));
     return { ok: true, codigo: 'REGISTRADO', mensaje: `Posición ${registro.posicion} enviada a la planilla.` };
   } finally {
     candado.releaseLock();
   }
+}
+
+/** Fila de Conteo_1410 para un registro, en el orden de ENCABEZADOS.Conteo_1410. */
+function filaDeRegistro_(registro) {
+  return [
+    registro.id,
+    deIso_(registro.fechaHora),
+    registro.usuario,
+    registro.rol,
+    registro.campania,
+    registro.tipo,
+    registro.posicion,
+    registro.codigo,
+    registro.lote,
+    registro.cantidad,
+    registro.vacia ? 'SI' : 'NO',
+    'VALIDO',
+    registro.dispositivo,
+    new Date(),
+  ];
+}
+
+// ---------------------------------------------------------------------------------------------
+// Conciliación en la hoja (H6)
+//
+// Las claves (Codigo|Lote|Posicion) salen de conciliar(), la misma función que usa la app. Cada
+// número se escribe como fórmula SUMIFS sobre rangos con nombre, para que se pueda verificar
+// haciendo clic en la celda. Al final se lee lo que calculó la hoja y se compara con la app.
+
+/**
+ * @param {{forzar?:boolean, usuario?:string}} opciones  forzar: conciliar aunque falten posiciones
+ * @returns {{ok:boolean, codigo:string, mensaje:string, datos?:object}}
+ */
+function conciliarEnHoja_({ forzar = false, usuario = '' } = {}) {
+  const p = leerParametros_();
+  const campania = p.CAMPANIA_ACTIVA;
+  const registros = leerRegistros_();
+  const posiciones = leerPosiciones_().map((x) => x.posicion);
+  const cob = cobertura(registros, posiciones, campania);
+  if (cob.faltantes.length && !forzar) {
+    return {
+      ok: false,
+      codigo: 'COBERTURA_INCOMPLETA',
+      mensaje: `Faltan relevar ${cob.faltantes.length} de ${cob.total} posiciones: ${cob.faltantes.join(', ')}.`,
+      datos: { faltantes: cob.faltantes },
+    };
+  }
+
+  const materiales = leerMateriales_();
+  const filas = conciliar({
+    materiales,
+    stock3009: leerStock_(),
+    movimientos: leerMovimientos_(),
+    registros,
+    campania,
+    desde: p.FECHA_DESDE,
+    hasta: p.FECHA_CONTEO,
+    toleranciaDefecto: Number(p.TOLERANCIA_DEFECTO) || 0,
+  });
+
+  definirRangosConNombre_();
+  escribirConciliacion_(filas);
+  escribirResumen_(materiales, usuario || 'Sin usuario');
+  SpreadsheetApp.flush();
+
+  const verificacion = verificarConciliacion_(filas);
+  const indicadores = calcularIndicadores(filas, posiciones, materiales);
+  const porcentaje = (x) => `${(x * 100).toFixed(1).replace('.', ',')} %`;
+  const mensaje =
+    `Conciliación lista: ${indicadores.claves} claves, ${indicadores.clavesOk} OK y ${indicadores.clavesConDiferencia} con diferencia. ` +
+    `Exactitud ${porcentaje(indicadores.exactitudPorClave)} por clave y ${porcentaje(indicadores.exactitudPorPosicion)} por posición. ` +
+    (verificacion.coinciden
+      ? 'Las fórmulas de la hoja coinciden con el cálculo de la app.'
+      : `Atención: ${verificacion.diferencias.length} valores de la hoja no coinciden con el cálculo de la app.`) +
+    (forzar && cob.faltantes.length ? ` Parcial: faltan ${cob.faltantes.length} posiciones.` : '');
+
+  return { ok: true, codigo: 'CONCILIADO', mensaje, datos: { filas, indicadores, cobertura: cob, verificacion } };
+}
+
+const letraDeColumna_ = (n) => (n > 26 ? letraDeColumna_(Math.floor((n - 1) / 26)) : '') + String.fromCharCode(65 + ((n - 1) % 26));
+
+/** Rangos con nombre que usan las fórmulas: hacen que se lean como texto (MOV_CANTIDAD, FECHA_DESDE…). */
+function definirRangosConNombre_() {
+  const libro = SpreadsheetApp.getActive();
+  const nombrar = (nombre, rango) => {
+    if (libro.getRangeByName(nombre)) libro.removeNamedRange(nombre);
+    libro.setNamedRange(nombre, rango);
+  };
+
+  const parametros = hoja_(HOJAS.PARAMETROS);
+  const claves = parametros.getRange(1, 1, parametros.getLastRow(), 1).getValues().map((f) => texto_(f[0]));
+  const celdaParametro = (clave) => {
+    const i = claves.indexOf(clave);
+    if (i < 0) throw new Error(`Falta ${clave} en la hoja Parametros: corré «Configurar hojas del caso».`);
+    return parametros.getRange(i + 1, 2);
+  };
+  nombrar('CAMPANIA', celdaParametro('CAMPANIA_ACTIVA'));
+  nombrar('FECHA_DESDE', celdaParametro('FECHA_DESDE'));
+  nombrar('FECHA_CONTEO', celdaParametro('FECHA_CONTEO'));
+  nombrar('TOLERANCIA_DEFECTO', celdaParametro('TOLERANCIA_DEFECTO'));
+
+  const columnas = [
+    [HOJAS.STOCK, 'STOCK', { Codigo: 'CODIGO', Lote: 'LOTE', Posicion: 'POSICION', Stock: 'CANTIDAD' }],
+    [HOJAS.MOVIMIENTOS, 'MOV', { Fecha: 'FECHA', Codigo: 'CODIGO', Lote: 'LOTE', Cantidad: 'CANTIDAD', Tipo_Movimiento: 'TIPO', Posicion: 'POSICION' }],
+    [HOJAS.CONTEO, 'CONTEO', { Campania: 'CAMPANIA', Posicion: 'POSICION', Codigo: 'CODIGO', Lote: 'LOTE', Cantidad: 'CANTIDAD', Estado: 'ESTADO' }],
+  ];
+  columnas.forEach(([nombreHoja, prefijo, campos]) => {
+    Object.entries(campos).forEach(([encabezado, sufijo]) => {
+      const letra = letraDeColumna_(ENCABEZADOS[nombreHoja].indexOf(encabezado) + 1);
+      nombrar(`${prefijo}_${sufijo}`, hoja_(nombreHoja).getRange(`${letra}2:${letra}`));
+    });
+  });
+}
+
+/** Fórmulas de una fila de Conciliacion (columnas A a N). */
+function formulasConciliacion_(r) {
+  const clave = (prefijo) => `${prefijo}_CODIGO,$B${r}, ${prefijo}_LOTE,$D${r}, ${prefijo}_POSICION,$E${r}`;
+  const periodo = 'MOV_FECHA,">="&FECHA_DESDE, MOV_FECHA,"<="&FECHA_CONTEO';
+  const movimientos = (tipo) => `SUMIFS(MOV_CANTIDAD, ${clave('MOV')}, ${periodo}${tipo ? `, MOV_TIPO,"${tipo}"` : ''})`;
+  return {
+    clave: `=B${r}&"|"&D${r}&"|"&E${r}`,
+    descripcion: `=IFERROR(VLOOKUP($B${r}, Maestro_Materiales!$A:$B, 2, FALSE), "")`,
+    stock: `=SUMIFS(STOCK_CANTIDAD, ${clave('STOCK')})`,
+    ingresos: `=${movimientos('Ingreso_Orden_Compra')} + ${movimientos('Retorno_Venta')}`,
+    salidas: `=${movimientos('Salida_Venta')} + ${movimientos('Consumo_Orden_Producción')}`,
+    // Todo lo que no es ingreso ni salida: ajustes de inventario y transferencias.
+    ajustes: `=${movimientos('')} - G${r} - H${r}`,
+    teorico: `=F${r}+G${r}+H${r}+I${r}`,
+    fisico: `=SUMIFS(CONTEO_CANTIDAD, ${clave('CONTEO')}, CONTEO_ESTADO,"VALIDO", CONTEO_CAMPANIA,CAMPANIA)`,
+    diferencia: `=K${r}-J${r}`,
+    tolerancia: `=IFERROR(VLOOKUP($B${r}, Maestro_Materiales!$A:$E, 5, FALSE), TOLERANCIA_DEFECTO)`,
+    clasificacion:
+      `=IF(ABS(L${r})<=M${r}, "OK", ` +
+      `IF(COUNTIFS(Maestro_Lotes!$A:$A,$B${r}, Maestro_Lotes!$B:$B,$D${r})=0, "NO_REGISTRADO", ` +
+      `IF(ABS(SUMIFS($L:$L, $B:$B,$B${r}, $D:$D,$D${r}))<=M${r}, "UBICACION", ` +
+      `IF(L${r}<0, "FALTANTE", "SOBRANTE"))))`,
+  };
+}
+
+function escribirConciliacion_(filas) {
+  const hoja = hoja_(HOJAS.CONCILIACION);
+  const columnas = ENCABEZADOS.Conciliacion.length;
+
+  // Causa, Accion y Aprobado_por de una corrida anterior se conservan para las claves que siguen.
+  const previas = new Map(leerTablaSinCache_(HOJAS.CONCILIACION).map((f) => [texto_(f.Clave), f]));
+  const ultima = hoja.getLastRow();
+  if (ultima > 1) {
+    hoja.getRange(2, 1, ultima - 1, columnas).clearContent();
+    hoja.getRange(2, 15, ultima - 1, 3).clearDataValidations();
+  }
+  if (!filas.length) return;
+
+  const matriz = filas.map((f, i) => {
+    const r = i + 2;
+    const fx = formulasConciliacion_(r);
+    const previa = previas.get(f.clave) || {};
+    return [
+      fx.clave, f.codigo, fx.descripcion, f.lote, f.posicion,
+      fx.stock, fx.ingresos, fx.salidas, fx.ajustes, fx.teorico, fx.fisico, fx.diferencia, fx.tolerancia, fx.clasificacion,
+      texto_(previa.Causa), texto_(previa.Accion), texto_(previa.Aprobado_por),
+    ];
+  });
+  const n = matriz.length;
+  hoja.getRange(2, 1, n, columnas).setValues(matriz);
+  hoja.getRange(2, 6, n, 8).setNumberFormat('0');
+  hoja.getRange(2, 14, n, 1).setFontWeight('bold');
+
+  hoja.getRange(2, 15, n, 1).setDataValidation(
+    SpreadsheetApp.newDataValidation().requireValueInList(CAUSAS, true).setAllowInvalid(true).build(),
+  );
+  hoja.getRange(2, 16, n, 1).setDataValidation(
+    SpreadsheetApp.newDataValidation().requireValueInList(ACCIONES_DIFERENCIA, true).setAllowInvalid(false).build(),
+  );
+
+  const filasDatos = hoja.getRange(2, 1, n, columnas);
+  hoja.setConditionalFormatRules(
+    Object.entries(COLORES_CLASIFICACION).map(([clasificacion, color]) =>
+      SpreadsheetApp.newConditionalFormatRule()
+        .whenFormulaSatisfied(`=$N2="${clasificacion}"`)
+        .setBackground(color)
+        .setRanges([filasDatos])
+        .build(),
+    ),
+  );
+}
+
+/** Hoja Resumen: indicadores del cierre, todos con fórmulas sobre Conciliacion. */
+function escribirResumen_(materiales, usuario) {
+  const hoja = hoja_(HOJAS.RESUMEN);
+  if (hoja.getLastRow() > 1) hoja.getRange(2, 1, hoja.getLastRow() - 1, 3).clearContent();
+
+  const C = 'Conciliacion';
+  const filas = [
+    ['Claves conciliadas', `=COUNTA(${C}!A2:A)`, 'Combinaciones Codigo|Lote|Posicion con stock teórico o físico'],
+    ['Claves sin diferencia', `=COUNTIF(${C}!N2:N,"OK")`, 'Dentro de la tolerancia del material'],
+    ['Claves con diferencia', '=B2-B3', ''],
+    ['Exactitud por clave', '=IFERROR(B3/B2,0)', 'Claves sin diferencia / claves conciliadas'],
+    ['Posiciones del alcance', '=COUNTA(Maestro_Posiciones!A2:A)', 'A1 a G4'],
+    ['Posiciones con diferencia', `=IFERROR(COUNTUNIQUE(FILTER(${C}!E2:E,${C}!N2:N<>"OK",${C}!N2:N<>"")),0)`, ''],
+    ['Exactitud por posición', '=IFERROR((B6-B7)/B6,0)', 'Posiciones sin diferencia / posiciones del alcance'],
+    ['Posiciones relevadas', '=IFERROR(COUNTUNIQUE(FILTER(CONTEO_POSICION,CONTEO_ESTADO="VALIDO",CONTEO_CAMPANIA=CAMPANIA)),0)', 'Con registro VALIDO en la campaña, incluidas las vacías'],
+    ['Teórico total (u.)', `=SUM(${C}!J2:J)`, 'Stock 30/09 más movimientos del período'],
+    ['Físico total (u.)', `=SUM(${C}!K2:K)`, 'Conteo con la app'],
+    ['Diferencia neta (u.)', '=B11-B10', 'Físico menos teórico'],
+    ['Unidades faltantes', `=-SUMIFS(${C}!L2:L,${C}!L2:L,"<0",${C}!N2:N,"<>UBICACION",${C}!N2:N,"<>OK")`, 'Sin contar los errores de ubicación'],
+    ['Unidades sobrantes', `=SUMIFS(${C}!L2:L,${C}!L2:L,">0",${C}!N2:N,"<>UBICACION",${C}!N2:N,"<>OK")`, 'Sin contar los errores de ubicación'],
+    ['', '', ''],
+    ['Claves por clasificación', '', ''],
+  ];
+  const descripciones = {
+    OK: 'Diferencia dentro de la tolerancia',
+    FALTANTE: 'Hay menos de lo que dice el sistema',
+    SOBRANTE: 'Hay más de lo que dice el sistema',
+    UBICACION: 'El lote está, pero en otra posición',
+    NO_REGISTRADO: 'Material-lote que el sistema no conoce',
+  };
+  Object.keys(COLORES_CLASIFICACION).forEach((c) => {
+    filas.push([c, `=COUNTIF(${C}!N2:N,A${filas.length + 2})`, descripciones[c]]);
+  });
+  filas.push(['', '', ''], ['Diferencia neta por material', '', '']);
+  materiales.forEach((m) => {
+    filas.push([m.codigo, `=SUMIFS(${C}!L2:L,${C}!B2:B,A${filas.length + 2})`, m.descripcion]);
+  });
+  filas.push(['', '', ''], ['Conciliación ejecutada', new Date(), usuario]);
+
+  hoja.getRange(2, 1, filas.length, 3).setValues(filas);
+  hoja.getRange('B5').setNumberFormat('0.0%');
+  hoja.getRange('B8').setNumberFormat('0.0%');
+  hoja.getRange(filas.length + 1, 2).setNumberFormat('dd/mm/yyyy hh:mm:ss');
+}
+
+/** Lee lo que calculó la hoja y lo compara, valor por valor, con el cálculo de la app. */
+function verificarConciliacion_(filas) {
+  if (!filas.length) return { coinciden: true, revisadas: 0, diferencias: [] };
+  const valores = hoja_(HOJAS.CONCILIACION).getRange(2, 1, filas.length, 14).getValues();
+  const campos = [
+    ['clave', 0], ['stockInicial', 5], ['ingresos', 6], ['salidas', 7], ['ajustes', 8],
+    ['teorico', 9], ['fisico', 10], ['diferencia', 11], ['tolerancia', 12], ['clasificacion', 13],
+  ];
+  const diferencias = [];
+  filas.forEach((f, i) => {
+    campos.forEach(([campo, j]) => {
+      const enHoja = valores[i][j];
+      if (String(enHoja) !== String(f[campo])) diferencias.push({ clave: f.clave, campo, hoja: String(enHoja), app: f[campo] });
+    });
+  });
+  return { coinciden: diferencias.length === 0, revisadas: filas.length, diferencias: diferencias.slice(0, 20) };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -536,9 +861,9 @@ function registrarLog_(datos, respuesta) {
     const detalle =
       datos.accion === 'registrar'
         ? `${registro.posicion || ''} ${registro.vacia ? 'vacía' : `${registro.codigo || ''} ${registro.lote || ''} ${registro.cantidad ?? ''}`} id=${registro.id || ''}`
-        : respuesta.ok
-          ? ''
-          : respuesta.mensaje;
+        : !respuesta.ok || datos.accion === 'conciliar'
+          ? respuesta.mensaje
+          : '';
     hoja_(HOJAS.LOG).appendRow([
       new Date(),
       texto_(datos.accion) || '(sin acción)',

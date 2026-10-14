@@ -75,6 +75,7 @@ export function crearBackendDemo(almacen) {
       return resultado;
     },
 
+    /** En modo demo no hay hoja: se calcula acá con la misma función que usa el servidor. */
     async conciliar(campania) {
       exigirConexion();
       const { registros } = cargar();
@@ -89,9 +90,11 @@ export function crearBackendDemo(almacen) {
       });
       return {
         ok: true,
+        mensaje: 'Conciliación calculada en este navegador (modo demo).',
         filas,
         indicadores: calcularIndicadores(filas, posiciones, CASO.materiales),
         cobertura: cobertura(registros, posiciones, campania),
+        verificacion: null,
       };
     },
 

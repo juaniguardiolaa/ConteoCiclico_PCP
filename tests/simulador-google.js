@@ -1,9 +1,12 @@
 // Simulador mínimo de los servicios de Google que usa apps-script/Code.gs (SpreadsheetApp,
 // Utilities, LockService, ContentService), para probar el servidor en Node sin publicarlo.
-// No calcula fórmulas: solo las guarda. Los formatos (colores, negrita, etc.) no hacen nada.
+// Las fórmulas se calculan con tests/formulas-simuladas.js (solo las funciones que usa Code.gs).
+// Los formatos (colores, negrita, anchos, etc.) no hacen nada.
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import vm from 'node:vm';
+
+import { esError, esFormulaMatricial, evaluarFormula } from './formulas-simuladas.js';
 
 const DESFASE = '-03:00'; // America/Argentina/Buenos_Aires, sin horario de verano
 
@@ -19,6 +22,7 @@ function conFormatoLibre(objeto) {
 }
 
 const indiceColumna = (letras) => [...letras].reduce((n, c) => n * 26 + (c.charCodeAt(0) - 64), 0);
+const letraColumna = (n) => (n > 26 ? letraColumna(Math.floor((n - 1) / 26)) : '') + String.fromCharCode(65 + ((n - 1) % 26));
 
 class Rango {
   constructor(hoja, fila, columna, filas, columnas) {
@@ -32,42 +36,85 @@ class Rango {
   getValue() {
     return this.getValues()[0][0];
   }
+  /** Como en Apps Script: un texto que empieza con «=» se guarda como fórmula. */
   setValues(valores) {
-    valores.forEach((fila, i) => fila.forEach((v, j) => this.hoja.escribirCelda(this.fila + i, this.columna + j, v)));
+    valores.forEach((fila, i) => fila.forEach((v, j) => this.hoja.escribir(this.fila + i, this.columna + j, v)));
     return conFormatoLibre(this);
   }
   setValue(valor) {
     return this.setValues([[valor]]);
   }
   setFormula(formula) {
-    this.hoja.formulas.set(`${this.fila},${this.columna}`, formula);
-    return conFormatoLibre(this);
+    return this.setValue(formula);
+  }
+  setFormulas(formulas) {
+    return this.setValues(formulas);
   }
   getFormula() {
     return this.hoja.formulas.get(`${this.fila},${this.columna}`) ?? '';
   }
+  getFormulas() {
+    return Array.from({ length: this.filas }, (_, i) =>
+      Array.from({ length: this.columnas }, (_, j) => this.hoja.formulas.get(`${this.fila + i},${this.columna + j}`) ?? ''),
+    );
+  }
   clearContent() {
-    for (let i = 0; i < this.filas; i++) for (let j = 0; j < this.columnas; j++) this.hoja.escribirCelda(this.fila + i, this.columna + j, '');
+    for (let i = 0; i < this.filas; i++) for (let j = 0; j < this.columnas; j++) this.hoja.escribir(this.fila + i, this.columna + j, '');
+    return conFormatoLibre(this);
+  }
+  getA1Notation() {
+    return `${letraColumna(this.columna)}${this.fila}:${letraColumna(this.columna + this.columnas - 1)}${this.fila + this.filas - 1}`;
+  }
+  getSheet() {
+    return this.hoja;
+  }
+  setDataValidation(regla) {
+    this.hoja.validaciones.push({ rango: this.getA1Notation(), regla });
     return conFormatoLibre(this);
   }
 }
 
 class Hoja {
-  constructor(nombre) {
+  constructor(nombre, libro) {
     this.nombre = nombre;
+    this.libro = libro;
     this.celdas = []; // celdas[fila-1][columna-1]
-    this.formulas = new Map();
+    this.formulas = new Map(); // "fila,columna" -> fórmula
     this.protecciones = [];
+    this.reglasFormato = [];
+    this.validaciones = [];
   }
   getName() {
     return this.nombre;
   }
-  leerCelda(fila, columna) {
-    return this.celdas[fila - 1]?.[columna - 1] ?? '';
-  }
-  escribirCelda(fila, columna, valor) {
+  escribir(fila, columna, valor) {
+    const clave = `${fila},${columna}`;
+    this.libro.version++;
+    if (typeof valor === 'string' && valor.startsWith('=')) {
+      this.formulas.set(clave, valor);
+      valor = '';
+    } else {
+      this.formulas.delete(clave);
+    }
     while (this.celdas.length < fila) this.celdas.push([]);
     this.celdas[fila - 1][columna - 1] = valor;
+  }
+  /** Valor visible de una celda: el resultado de su fórmula, el derrame de una fórmula vecina o lo escrito. */
+  leerCelda(fila, columna) {
+    const formula = this.formulas.get(`${fila},${columna}`);
+    if (formula) {
+      const v = this.libro.evaluar(this, fila, columna, formula);
+      if (esError(v)) return v.error;
+      return Array.isArray(v) ? (v[0]?.[0] ?? '') : v;
+    }
+    for (const [clave, f] of this.formulas) {
+      if (!esFormulaMatricial(f)) continue;
+      const [ff, fc] = clave.split(',').map(Number);
+      if (ff > fila || fc > columna) continue;
+      const v = this.libro.evaluar(this, ff, fc, f);
+      if (Array.isArray(v) && fila - ff < v.length && columna - fc < v[0].length) return v[fila - ff][columna - fc];
+    }
+    return this.celdas[fila - 1]?.[columna - 1] ?? '';
   }
   getLastRow() {
     for (let i = this.celdas.length; i > 0; i--) if (this.celdas[i - 1].some((v) => v !== '' && v !== undefined)) return i;
@@ -90,11 +137,11 @@ class Hoja {
     return conFormatoLibre(new Rango(this, a, b, c, d));
   }
   getDataRange() {
-    return this.getRange(1, 1, Math.max(1, this.getLastRow()), Math.max(1, this.getLastColumn()));
+    return this.getRange(1, 1, Math.max(1, this.libro.ultimaFila(this)), Math.max(1, this.getLastColumn()));
   }
   appendRow(fila) {
     const n = this.getLastRow() + 1;
-    fila.forEach((v, j) => this.escribirCelda(n, j + 1, v));
+    fila.forEach((v, j) => this.escribir(n, j + 1, v));
     return conFormatoLibre(this);
   }
   protect() {
@@ -105,7 +152,13 @@ class Hoja {
   getProtections() {
     return this.protecciones;
   }
-  /** Para los tests: filas de datos sin el encabezado. */
+  setConditionalFormatRules(reglas) {
+    this.reglasFormato = reglas;
+  }
+  getConditionalFormatRules() {
+    return this.reglasFormato;
+  }
+  /** Para los tests: filas de datos (valores calculados) sin el encabezado. */
   filasDeDatos() {
     return this.getDataRange().getValues().slice(1);
   }
@@ -113,14 +166,18 @@ class Hoja {
 
 class Libro {
   constructor(hojasIniciales = ['Hoja 1']) {
-    this.hojas = hojasIniciales.map((n) => conFormatoLibre(new Hoja(n)));
+    this.version = 0;
+    this.cache = new Map();
+    this.enCurso = new Set();
+    this.nombres = new Map(); // rango con nombre -> { hoja, desde, hasta }
+    this.hojas = hojasIniciales.map((n) => conFormatoLibre(new Hoja(n, this)));
     this.zona = 'America/Argentina/Buenos_Aires';
   }
   getSheetByName(nombre) {
     return this.hojas.find((h) => h.getName() === nombre) ?? null;
   }
   insertSheet(nombre) {
-    const hoja = conFormatoLibre(new Hoja(nombre));
+    const hoja = conFormatoLibre(new Hoja(nombre, this));
     this.hojas.push(hoja);
     return hoja;
   }
@@ -130,6 +187,9 @@ class Libro {
   deleteSheet(hoja) {
     this.hojas = this.hojas.filter((h) => h !== hoja);
   }
+  setActiveSheet(hoja) {
+    return hoja;
+  }
   setSpreadsheetTimeZone(zona) {
     this.zona = zona;
   }
@@ -137,6 +197,74 @@ class Libro {
     return this.zona;
   }
   setSpreadsheetLocale() {}
+  setNamedRange(nombre, rango) {
+    const [desde, hasta] = rango.getA1Notation().split(':');
+    // Un rango que llega a la fila 1000 se toma abierto (A2:A), como lo crea Code.gs.
+    const abierto = rango.fila + rango.filas - 1 >= 1000;
+    this.nombres.set(nombre, {
+      hoja: rango.getSheet().getName(),
+      desde,
+      hasta: abierto ? hasta.replace(/\d+$/, '') : desde === hasta ? null : hasta,
+    });
+  }
+  rangoConNombre(nombre) {
+    return this.nombres.get(nombre) ?? null;
+  }
+  getRangeByName(nombre) {
+    return this.nombres.has(nombre) ? conFormatoLibre({ nombre }) : null;
+  }
+  removeNamedRange(nombre) {
+    this.nombres.delete(nombre);
+  }
+  getNamedRanges() {
+    return [...this.nombres.keys()].map((n) => ({ getName: () => n }));
+  }
+  /** Última fila con algo: valores, fórmulas o derrames. */
+  ultimaFila(hoja) {
+    let ultima = hoja.getLastRow();
+    for (const [clave, f] of hoja.formulas) {
+      const [fila, columna] = clave.split(',').map(Number);
+      ultima = Math.max(ultima, fila);
+      if (esFormulaMatricial(f)) {
+        const v = this.evaluar(hoja, fila, columna, f);
+        if (Array.isArray(v)) ultima = Math.max(ultima, fila + v.length - 1);
+      }
+    }
+    return ultima;
+  }
+  evaluar(hoja, fila, columna, formula) {
+    const clave = `${hoja.nombre}!${fila},${columna}`;
+    if (this.versionCache !== this.version) {
+      this.cache.clear();
+      this.versionCache = this.version;
+    }
+    if (this.cache.has(clave)) return this.cache.get(clave);
+    if (this.enCurso.has(clave)) return { error: '#REF!' }; // referencia circular
+    this.enCurso.add(clave);
+    let v;
+    try {
+      v = evaluarFormula(formula, { libro: this, hoja });
+    } finally {
+      this.enCurso.delete(clave);
+    }
+    this.cache.set(clave, v);
+    return v;
+  }
+}
+
+/** Constructor de reglas encadenable, como SpreadsheetApp.newConditionalFormatRule(). */
+function constructorDeRegla() {
+  const regla = {};
+  const c = new Proxy(regla, {
+    get(destino, prop) {
+      if (prop === 'build') return () => ({ ...destino });
+      return (...args) => {
+        destino[prop] = args.length > 1 ? args : args[0];
+        return c;
+      };
+    },
+  });
+  return c;
 }
 
 function formatearFecha(fecha, _zona, formato) {
@@ -155,7 +283,7 @@ function formatearFecha(fecha, _zona, formato) {
 
 /** Crea los servicios simulados y carga apps-script/conteo-ciclico.gs. Devuelve el contexto con las funciones globales. */
 export function cargarServidor({ hojasIniciales } = {}) {
-  const libro = new Libro(hojasIniciales);
+  const libro = conFormatoLibre(new Libro(hojasIniciales));
   const contexto = vm.createContext({ console });
   // Las fechas tienen que ser del mismo «mundo» que el código del servidor, si no falla `instanceof Date`.
   const FechaServidor = vm.runInContext('Date', contexto);
@@ -164,13 +292,35 @@ export function cargarServidor({ hojasIniciales } = {}) {
     if (formato === 'yyyy-MM-dd HH:mm:ss') return new FechaServidor(`${texto.replace(' ', 'T')}${DESFASE}`);
     throw new Error(`Formato no simulado: ${formato}`);
   };
+  const ui = {
+    respuestas: [],
+    preguntas: [],
+    alertas: [],
+    Button: { YES: 'YES', NO: 'NO', OK: 'OK' },
+    ButtonSet: { YES_NO: 'YES_NO', OK: 'OK' },
+    /** alert(titulo, texto, botones) es una pregunta; alert(texto) es un aviso. */
+    alert(...args) {
+      if (args.length >= 3) {
+        this.preguntas.push(args[1]);
+        return this.respuestas.shift() ?? 'YES';
+      }
+      this.alertas.push(args[0]);
+      return 'OK';
+    },
+    createMenu: () => conFormatoLibre({}),
+  };
+  let conInterfaz = false;
   Object.assign(contexto, {
     SpreadsheetApp: {
       getActive: () => libro,
       getActiveSpreadsheet: () => libro,
       getUi: () => {
-        throw new Error('Sin interfaz (simulador)');
+        if (!conInterfaz) throw new Error('Sin interfaz (simulador)');
+        return ui;
       },
+      flush: () => {},
+      newConditionalFormatRule: constructorDeRegla,
+      newDataValidation: constructorDeRegla,
       ProtectionType: { SHEET: 'SHEET' },
     },
     Utilities: { formatDate: formatearFecha, parseDate: interpretarFecha, getUuid: randomUUID },
@@ -190,5 +340,21 @@ export function cargarServidor({ hojasIniciales } = {}) {
     const respuesta = contexto.doPost({ postData: { contents: opciones.body } }).getContent();
     return { ok: true, status: 200, json: async () => JSON.parse(respuesta) };
   };
-  return { contexto, libro, hoja: (n) => libro.getSheetByName(n), post, get, fetch };
+  /**
+   * Corre una función del menú como si la tocara alguien en la planilla, con las respuestas dadas a
+   * las preguntas (Sí por defecto). Devuelve los avisos que se mostraron.
+   */
+  const desdeMenu = (funcion, respuestas = []) => {
+    conInterfaz = true;
+    ui.respuestas = [...respuestas];
+    ui.preguntas = [];
+    ui.alertas = [];
+    try {
+      contexto[funcion]();
+    } finally {
+      conInterfaz = false;
+    }
+    return ui.alertas;
+  };
+  return { contexto, libro, hoja: (n) => libro.getSheetByName(n), post, get, fetch, desdeMenu };
 }

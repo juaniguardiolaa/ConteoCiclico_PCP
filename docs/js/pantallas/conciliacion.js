@@ -1,5 +1,7 @@
 // Diagrama, Hoja 2: «¿Se relevaron todas las posiciones del alcance?», cálculo del teórico,
 // cruce contra el físico y «Reporte de conciliación por posición, material y lote».
+// Conectada a la planilla, la conciliación se escribe con fórmulas en la hoja Conciliacion y el
+// servidor verifica que la hoja dé lo mismo que este cálculo.
 import { rackHTML } from '../componentes/rack.js';
 import { cobertura } from '../dominio/indicadores.js';
 import { conSigno, entero, fechaCorta, html, pintar, porcentaje } from '../ui.js';
@@ -17,8 +19,11 @@ const PRIORIDAD = ['NO_REGISTRADO', 'UBICACION', 'FALTANTE', 'SOBRANTE', 'OK'];
 export async function mostrar(contenedor, app) {
   await app.refrescar();
   const p = app.parametros;
+  const enPlanilla = app.backend.modo !== 'demo';
   const posiciones = app.maestros.posiciones.map((x) => x.posicion);
   const cob = cobertura(app.estado.registros, posiciones, app.sesion.campania);
+  const pendientes = app.cola.pendientes().length;
+  const textoBoton = enPlanilla ? 'Ejecutar la conciliación en la planilla' : 'Ejecutar la conciliación';
 
   pintar(
     contenedor,
@@ -30,65 +35,78 @@ export async function mostrar(contenedor, app) {
           ${fechaCorta(p.fechaConteo)}. Físico = lo contado con la app. Diferencia = físico − teórico, por posición,
           material y lote.
         </p>
-        <div id="aviso-cola"></div>
-        <div id="cobertura"></div>
+
+        ${pendientes
+          ? html`<div class="mensaje advertencia">
+              <p><strong>Hay ${pendientes} registro(s) en este celular sin enviar.</strong> La conciliación usa lo que llegó al
+              servidor: conviene esperar a que se envíen o tocar «Reintentar ahora» en la ruta.</p>
+            </div>`
+          : ''}
+
+        ${cob.faltantes.length
+          ? html`<div class="mensaje advertencia">
+              <p><strong>Faltan relevar ${cob.faltantes.length} de ${cob.total} posiciones:</strong> ${cob.faltantes.join(', ')}.</p>
+              <p>Para cerrar la conciliación hay que contarlas. Se puede conciliar igual con lo que ya se relevó.</p>
+              <div class="mensaje-acciones">
+                <a class="boton primario" href="#/ruta">Contar las faltantes</a>
+                <button class="boton secundario" type="button" data-accion="parcial">Conciliar con lo relevado</button>
+              </div>
+            </div>`
+          : html`<div class="mensaje ok"><p>Las ${cob.total} posiciones del alcance están relevadas.</p></div>
+            <button class="boton primario" type="button" data-accion="conciliar">${textoBoton}</button>`}
+
         <div id="resultado-conciliacion" aria-live="polite"></div>
       </section>`,
   );
 
-  const zonaCobertura = contenedor.querySelector('#cobertura');
-  const zonaResultado = contenedor.querySelector('#resultado-conciliacion');
+  const zona = contenedor.querySelector('#resultado-conciliacion');
 
-  const ejecutar = async () => {
-    zonaResultado.innerHTML = '<p class="nota">Conciliando…</p>';
+  const ejecutar = async (forzar, boton) => {
+    if (boton) {
+      boton.disabled = true;
+      boton.textContent = enPlanilla ? 'Escribiendo la conciliación en la planilla…' : 'Conciliando…';
+    }
     let r;
     try {
-      r = await app.backend.conciliar(app.sesion.campania);
+      r = await app.backend.conciliar(app.sesion.campania, { forzar });
     } catch (error) {
       r = { ok: false, mensaje: `No se pudo conciliar: ${error.message} La conciliación necesita conexión con la planilla.` };
     }
+    if (boton) {
+      boton.disabled = false;
+      boton.textContent = forzar ? 'Conciliar con lo relevado' : textoBoton;
+    }
     if (!r.ok) {
-      pintar(zonaResultado, html`<div class="mensaje error"><p>${r.mensaje}</p></div>`);
+      pintar(zona, html`<div class="mensaje error"><p>${r.mensaje}</p>${r.codigo ? html`<p class="mensaje-codigo">${r.codigo}</p>` : ''}</div>`);
       return;
     }
-    pintarResultado(zonaResultado, r, app);
+    pintarResultado(zona, r, app);
+    zona.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const pendientes = app.cola.pendientes().length;
-  if (pendientes) {
-    pintar(
-      contenedor.querySelector('#aviso-cola'),
-      html`<div class="mensaje advertencia">
-        <p><strong>Hay ${pendientes} registro(s) en este celular sin enviar.</strong> La conciliación usa lo que llegó al
-        servidor: conviene esperar a que se envíen o tocar «Reintentar ahora» en la ruta.</p>
-      </div>`,
-    );
-  }
-
-  if (cob.faltantes.length) {
-    pintar(
-      zonaCobertura,
-      html`
-        <div class="mensaje advertencia">
-          <p><strong>Faltan relevar ${cob.faltantes.length} de ${cob.total} posiciones:</strong> ${cob.faltantes.join(', ')}.</p>
-          <p>Para cerrar la conciliación hay que contarlas. Podés ver un resultado parcial con lo que ya se relevó.</p>
-          <div class="mensaje-acciones">
-            <a class="boton primario" href="#/ruta">Contar las faltantes</a>
-            <button class="boton secundario" type="button" data-accion="parcial">Ver resultado parcial</button>
-          </div>
-        </div>`,
-    );
-    zonaCobertura.querySelector('[data-accion="parcial"]').addEventListener('click', ejecutar);
-  } else {
-    pintar(
-      zonaCobertura,
-      html`<div class="mensaje ok"><p>Las ${cob.total} posiciones del alcance están relevadas.</p></div>`,
-    );
-    await ejecutar();
-  }
+  contenedor.querySelector('[data-accion="conciliar"]')?.addEventListener('click', (e) => ejecutar(false, e.currentTarget));
+  contenedor.querySelector('[data-accion="parcial"]')?.addEventListener('click', (e) => ejecutar(true, e.currentTarget));
 }
 
-function pintarResultado(zona, { filas, indicadores: ind }, app) {
+function verificacionHTML({ verificacion, mensaje }) {
+  if (!verificacion) return html`<p class="nota">${mensaje}</p>`;
+  if (verificacion.coinciden) {
+    return html`<div class="mensaje ok">
+      <p><strong>La planilla coincide con este cálculo.</strong> Se compararon las ${verificacion.revisadas} claves de la
+      hoja Conciliacion, valor por valor. Cada número de la hoja es una fórmula que se puede revisar.</p>
+    </div>`;
+  }
+  return html`<div class="mensaje advertencia">
+    <p><strong>Hay ${verificacion.diferencias.length} valores de la hoja que no coinciden con este cálculo.</strong>
+    Revisar las fórmulas de la hoja Conciliacion:</p>
+    <ul>${verificacion.diferencias.slice(0, 6).map(
+      (d) => html`<li>${d.clave}, ${d.campo}: hoja ${d.hoja}, app ${String(d.app)}</li>`,
+    )}</ul>
+  </div>`;
+}
+
+function pintarResultado(zona, resultado, app) {
+  const { filas, indicadores: ind } = resultado;
   const porPosicion = new Map();
   for (const f of filas) {
     if (!porPosicion.has(f.posicion)) porPosicion.set(f.posicion, []);
@@ -111,6 +129,8 @@ function pintarResultado(zona, { filas, indicadores: ind }, app) {
   pintar(
     zona,
     html`
+      ${verificacionHTML(resultado)}
+
       <dl class="indicadores">
         <div>
           <dt>Exactitud por clave</dt>

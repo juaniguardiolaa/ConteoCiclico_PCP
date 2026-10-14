@@ -81,7 +81,17 @@ El último tiene que responder `POSICION_INEXISTENTE`, y la llamada queda anotad
 | --- | --- |
 | Configurar hojas del caso | Lo mismo que `setupHojas`. Se puede repetir: no duplica datos ni cambia el token. |
 | Ver token para la app | Muestra el token de la hoja Parametros. |
+| Ejecutar conciliación | Escribe la hoja Conciliacion con fórmulas (SUMIFS sobre rangos con nombre) y la hoja Resumen. Si faltan posiciones, pregunta si conciliar igual. Al final compara lo que calculó la hoja con el cálculo de la app y lo informa. |
+| Cargar el conteo del enunciado (prueba) | Reemplaza Conteo_1410 por el stock físico del 14/10 del enunciado (28 posiciones), para verificar la conciliación sin recorrer el rack. Pide confirmación. |
 | Reiniciar la simulación | Borra conteos, conciliación, resumen y log, y deja Movimientos con los 40 del caso. Sirve para ensayar antes del 24/10. Pide confirmación. |
+
+## Cómo leer la conciliación
+
+- Cada número de **Conciliacion** es una fórmula: al hacer clic en una celda se ve, por ejemplo, `=SUMIFS(MOV_CANTIDAD, MOV_CODIGO,$B2, MOV_LOTE,$D2, MOV_POSICION,$E2, MOV_FECHA,">="&FECHA_DESDE, MOV_FECHA,"<="&FECHA_CONTEO, MOV_TIPO,"Ingreso_Orden_Compra") + …`.
+- Los nombres en mayúsculas son **rangos con nombre** (menú Datos → Rangos con nombre): `MOV_CANTIDAD` es la columna Cantidad de Movimientos, `FECHA_DESDE` es la celda de Parametros, etc.
+- **Ajustes** suma todo movimiento del período que no sea ingreso ni salida (ajustes de inventario y transferencias).
+- **Clasificacion**: OK si la diferencia está dentro de la tolerancia; NO_REGISTRADO si el par material-lote no está en Maestro_Lotes; UBICACION si el mismo material-lote suma cero entre posiciones; si no, FALTANTE o SOBRANTE.
+- Las columnas **Causa**, **Accion** y **Aprobado_por** se completan a mano (con listas desplegables) y se conservan al volver a conciliar. Poner **Reconteo** en Accion hace que la posición aparezca para recontar en la app.
 
 ## Compartir
 

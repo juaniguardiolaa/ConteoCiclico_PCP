@@ -221,7 +221,7 @@ test('la app habla con el servidor: probar conexión, maestros, cola y conciliac
   assert.equal(bien.ok, true, bien.mensaje);
 
   const almacen = almacenEnMemoria();
-  almacen.guardar('sesion', { usuario: 'Operario 1' });
+  almacen.guardar('sesion', { usuario: 'Control', rol: 'CONTROL' });
   const backend = crearBackendAppsScript({ url: URL_WEB_APP, token: s.token }, almacen, s.fetch);
   assert.equal((await backend.maestros()).posiciones.length, 28);
 
@@ -233,9 +233,23 @@ test('la app habla con el servidor: probar conexión, maestros, cola y conciliac
   assert.equal(r.rechazados[0].codigo, 'POSICION_DUPLICADA');
   assert.equal((await backend.estado(CAMPANIA)).registros.length, 1);
 
-  const conciliacion = await backend.conciliar(CAMPANIA);
-  assert.equal(conciliacion.ok, true);
-  assert.equal(conciliacion.cobertura.relevadas.length, 1);
+  const incompleta = await backend.conciliar(CAMPANIA);
+  assert.equal(incompleta.codigo, 'COBERTURA_INCOMPLETA');
+  assert.equal(incompleta.datos.faltantes.length, 27);
+
+  const parcial = await backend.conciliar(CAMPANIA, { forzar: true });
+  assert.equal(parcial.ok, true);
+  assert.equal(parcial.cobertura.relevadas.length, 1);
+  assert.equal(parcial.verificacion.coinciden, true);
+  assert.match(parcial.mensaje, /Parcial: faltan 27 posiciones/);
+});
+
+test('un operario no puede conciliar desde la app', async () => {
+  const s = servidorConfigurado();
+  const almacen = almacenEnMemoria();
+  almacen.guardar('sesion', { usuario: 'Operario 1', rol: 'OPERARIO' });
+  const backend = crearBackendAppsScript({ url: URL_WEB_APP, token: s.token }, almacen, s.fetch);
+  assert.equal((await backend.conciliar(CAMPANIA, { forzar: true })).codigo, 'ROL_NO_AUTORIZADO');
 });
 
 test('con el token mal cargado, la cola guarda los registros en vez de descartarlos', async () => {

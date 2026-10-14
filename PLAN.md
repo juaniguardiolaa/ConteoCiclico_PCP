@@ -14,7 +14,8 @@ Repositorio: https://github.com/juaniguardiolaa/ConteoCiclico_PCP
 | H4 · Etiquetas para imprimir | Hecho el 14/10, antes que H3, para poder probar la cámara. 28 de posición, 21 de producto para la simulación (o 22 de catálogo) y 4 de prueba de controles. Verificado: los 53 QR y los 53 Code 128 del PDF se leen a 200 ppp, y html5-qrcode lee la etiqueta impresa. Falta escanearlas con el celular (👤). |
 | H3 · Cola sin conexión | Hecho el 14/10. Cola con espera creciente y envío al volver la red, avisos de pendientes y rechazados, interruptor para simular el corte en modo demo y service worker para abrir la app sin red. Verificado en el navegador: 3 posiciones sin conexión se envían al volver sin duplicar, y la app recarga con la red cortada. |
 | H5 · Google Sheets y Apps Script | Código hecho el 14/10 y probado con una planilla simulada en Node (13 tests del servidor y del contrato con la app). La lógica del servidor se genera desde `docs/js/dominio`, así valida y concilia igual que la app. Falta instalarlo en la cuenta juaniguardiola85@gmail.com siguiendo [apps-script/INSTALAR.md](apps-script/INSTALAR.md) (👤). |
-| H6 a H8 | Pendientes |
+| H6 · Conciliación en el Sheet | Hecho el 14/10. Fórmulas SUMIFS sobre rangos con nombre en Conciliacion y Resumen, formato condicional, listas de Causa y Accion, verificación hoja contra app. Con un evaluador de fórmulas en el simulador, los tests comprueban que la hoja da la tabla esperada (24 claves, 54,2 %, 60,7 %, −25) y queda toda en OK después de la transferencia y los ajustes. Falta correrlo en la planilla real (👤). |
+| H7 y H8 | Pendientes |
 
 ## Qué cambia respecto del plan del 13/10
 
