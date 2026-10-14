@@ -1,0 +1,15 @@
+{
+  "name": "conteo-ciclico-pcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "App de conteo cíclico y conciliación de inventarios con Google Sheets (TP6 · PCP · UTN FRH 2026)",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node scripts/servidor.mjs",
+    "test": "node --test",
+    "datos": "node scripts/exportar-datos.mjs"
+  }
+}
