@@ -13,7 +13,7 @@ const raiz = (ruta) => fileURLToPath(new URL(`../${ruta}`, import.meta.url));
 const leer = (ruta) => readFileSync(raiz(ruta), 'utf8').replace(/\r\n/g, '\n');
 
 // En orden de dependencia. etiquetas.js y cola.js son solo del celular.
-const MODULOS_DOMINIO = ['conciliacion', 'registros', 'validaciones', 'indicadores'];
+const MODULOS_DOMINIO = ['conciliacion', 'registros', 'validaciones', 'indicadores', 'ajustes'];
 
 export function generarDominio() {
   const partes = MODULOS_DOMINIO.map((nombre) => {

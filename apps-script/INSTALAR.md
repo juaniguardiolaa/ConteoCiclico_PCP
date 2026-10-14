@@ -82,6 +82,9 @@ El último tiene que responder `POSICION_INEXISTENTE`, y la llamada queda anotad
 | Configurar hojas del caso | Lo mismo que `setupHojas`. Se puede repetir: no duplica datos ni cambia el token. |
 | Ver token para la app | Muestra el token de la hoja Parametros. |
 | Ejecutar conciliación | Escribe la hoja Conciliacion con fórmulas (SUMIFS sobre rangos con nombre) y la hoja Resumen. Si faltan posiciones, pregunta si conciliar igual. Al final compara lo que calculó la hoja con el cálculo de la app y lo informa. |
+| Registrar ajustes y transferencias aprobados | Toma de Conciliacion las filas con Accion **Ajuste** o **Transferencia** y **Aprobado_por** completo, y agrega a Movimientos un movimiento por la diferencia con fecha 14/10 (`Ajuste_Inventario_Ciclico` o `Transferencia_Posicion`, con la causa y quién aprobó en Motivo). Una transferencia necesita las dos posiciones (la que falta y la que sobra) y que sumen cero. Muestra el detalle y pide confirmación; correrlo de nuevo no duplica. |
+| Guardar foto de la conciliación | Copia los valores de Conciliacion y Resumen en una hoja nueva «Foto dd-mm hh.mm». Sirve para el antes y el después de los ajustes. |
+| Cerrar la campaña | Pide el nombre de quien aprueba (Jefe de almacén), guarda la foto final y deja la campaña CERRADA en Parametros: la app ya no acepta registros. Si quedan diferencias, pregunta antes. |
 | Cargar el conteo del enunciado (prueba) | Reemplaza Conteo_1410 por el stock físico del 14/10 del enunciado (28 posiciones), para verificar la conciliación sin recorrer el rack. Pide confirmación. |
 | Reiniciar la simulación | Borra conteos, conciliación, resumen y log, y deja Movimientos con los 40 del caso. Sirve para ensayar antes del 24/10. Pide confirmación. |
 
@@ -95,7 +98,19 @@ La planilla queda en **Inglés (Estados Unidos)** (Archivo → Configuración �
 - Los nombres en mayúsculas son **rangos con nombre** (menú Datos → Rangos con nombre): `MOV_CANTIDAD` es la columna Cantidad de Movimientos, `FECHA_DESDE` es la celda de Parametros, etc.
 - **Ajustes** suma todo movimiento del período que no sea ingreso ni salida (ajustes de inventario y transferencias).
 - **Clasificacion**: OK si la diferencia está dentro de la tolerancia; NO_REGISTRADO si el par material-lote no está en Maestro_Lotes; UBICACION si el mismo material-lote suma cero entre posiciones; si no, FALTANTE o SOBRANTE.
-- Las columnas **Causa**, **Accion** y **Aprobado_por** se completan a mano (con listas desplegables) y se conservan al volver a conciliar. Poner **Reconteo** en Accion hace que la posición aparezca para recontar en la app.
+- Las columnas **Causa**, **Accion** y **Aprobado_por** se completan a mano (con listas desplegables) y se conservan al volver a conciliar. Poner **Reconteo** en Accion (o tocar «Pedir reconteo» en la app) hace que la posición aparezca para recontar en la app; el reconteo reemplaza al conteo anterior.
+
+## Análisis de diferencias y cierre (Hoja 2 del diagrama)
+
+1. **Inventario → Ejecutar conciliación** y **Guardar foto de la conciliación** (el «antes»).
+2. Para cada fila con diferencia, completar **Causa** y **Accion**:
+   - **Transferencia** en las dos filas de un error de ubicación (F1 y F2 de PROD003 L0009).
+   - **Reconteo** si hay dudas del conteo: el operario recuenta desde la app.
+   - **Corrección de movimiento** si un movimiento estaba mal cargado: se corrige a mano en Movimientos (la hoja avisa antes de editar) y la conciliación se recalcula sola.
+   - **Ajuste** si la diferencia se confirma y no se encuentra la causa.
+3. El Jefe de almacén escribe su nombre en **Aprobado_por** en las que aprueba.
+4. **Inventario → Registrar ajustes y transferencias aprobados**: esas claves pasan a OK.
+5. **Guardar foto de la conciliación** (el «después») y **Cerrar la campaña**.
 
 ## Compartir
 

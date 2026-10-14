@@ -44,6 +44,21 @@ export async function mostrar(contenedor, app) {
           </div>
         </div>
 
+        ${app.estado.cerrada
+          ? html`<div class="mensaje ok">
+              <p><strong>La campaña ${app.sesion.campania} está cerrada.</strong>
+              ${app.estado.cierreAprobadoPor ? `Aprobó el cierre: ${app.estado.cierreAprobadoPor}.` : ''}
+              Ya no se aceptan registros.</p>
+            </div>`
+          : ''}
+
+        ${reconteos.length && !app.estado.cerrada
+          ? html`<div class="mensaje advertencia">
+              <p><strong>Control pidió recontar ${reconteos.length === 1 ? 'la posición' : 'las posiciones'}
+              ${reconteos.join(', ')}.</strong> Escaneá la posición y contala de nuevo: el nuevo conteo reemplaza al anterior.</p>
+            </div>`
+          : ''}
+
         ${rechazados.map(
           (r) => html`
             <div class="mensaje error" role="alert">
@@ -79,7 +94,7 @@ export async function mostrar(contenedor, app) {
           ${reconteos.length ? html`<li><span class="muestra reconteo"></span>Reconteo pedido</li>` : ''}
         </ul>
 
-        ${completo
+        ${completo && !reconteos.length && !app.estado.cerrada
           ? html`<div class="mensaje ok">
               <p><strong>Relevaste las ${total} posiciones.</strong>
               ${puedeConciliar(app.sesion.rol)
@@ -89,9 +104,11 @@ export async function mostrar(contenedor, app) {
           : ''}
 
         <div class="acciones-fijas">
-          ${completo && puedeConciliar(app.sesion.rol)
+          ${completo && !reconteos.length && puedeConciliar(app.sesion.rol)
             ? html`<a class="boton primario" href="#/conciliacion">Ir a la conciliación</a>`
-            : html`<button class="boton primario" type="button" data-accion="contar" ${completo ? 'disabled' : ''}>Escanear posición</button>`}
+            : html`<button class="boton primario" type="button" data-accion="contar"
+                ${(completo && !reconteos.length) || app.estado.cerrada ? 'disabled' : ''}>
+                ${reconteos.length ? 'Escanear posición a recontar' : 'Escanear posición'}</button>`}
         </div>
 
         ${recientes.length

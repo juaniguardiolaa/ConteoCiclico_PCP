@@ -32,6 +32,14 @@ export async function mostrar(contenedor, app) {
     alLeer(texto, origen) {
       const lectura = origen === 'manual' ? leerPosicionManual(texto) : leerEtiqueta(texto);
       const validacion = validarLecturaPosicion(lectura, app.contexto(), app.borrador.tipo);
+      // Una posición ya contada con reconteo pedido por Control pasa sola a RECONTEO (Hoja 2:
+      // «Recontar la posición, misma captura de la Hoja 1, tipo = reconteo»).
+      if (validacion.codigo === 'POSICION_DUPLICADA' && app.estado.reconteos.includes(lectura.posicion)) {
+        app.borrador = { ...app.borrador, tipo: 'RECONTEO', posicion: lectura.posicion };
+        app.avisar(`Control pidió recontar ${lectura.posicion}: este conteo reemplaza al anterior.`, 'info');
+        app.ir('producto');
+        return;
+      }
       if (validacion.ok) {
         app.borrador = { ...app.borrador, posicion: lectura.posicion };
         app.ir('producto');

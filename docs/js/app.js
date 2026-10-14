@@ -75,11 +75,13 @@ const app = {
     } catch {
       const cache = almacen.leer(clave);
       this.estadoServidor ??=
-        cache?.campania === campania ? { registros: cache.registros, reconteos: cache.reconteos } : { registros: [], reconteos: [] };
+        cache?.campania === campania ? cache : { registros: [], reconteos: [] };
     }
     this.estado = {
       registros: combinarPendientes(this.estadoServidor.registros, this.cola.pendientes(), campania),
       reconteos: this.estadoServidor.reconteos,
+      cerrada: this.estadoServidor.estadoCampania === 'CERRADA',
+      cierreAprobadoPor: this.estadoServidor.cierreAprobadoPor ?? '',
     };
   },
 

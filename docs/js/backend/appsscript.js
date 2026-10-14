@@ -47,6 +47,9 @@ export function crearBackendAppsScript({ url, token }, almacen, fetchFn = (...a)
     /** Sin red lanza (la cola reintenta); un rechazo del servidor vuelve como { ok: false, codigo, mensaje }. */
     registrar: (registro) => llamar('registrar', { registro }),
 
+    /** Marca Accion = Reconteo en la hoja Conciliacion para esa posición. */
+    pedirReconteo: (posicion) => llamar('pedirReconteo', { posicion }),
+
     /** Escribe la conciliación en la hoja (fórmulas) y devuelve el resultado y la verificación hoja contra app. */
     async conciliar(campania, { forzar = false } = {}) {
       const r = await llamar('conciliar', { campania, forzar });

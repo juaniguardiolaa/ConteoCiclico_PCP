@@ -7,7 +7,7 @@
 // Este archivo se edita acá. Datos.gs y Dominio.gs se generan con npm run apps-script, que también
 // arma conteo-ciclico.gs: el archivo único que se pega en el editor de Apps Script.
 
-const VERSION_SERVIDOR = '0.6.2';
+const VERSION_SERVIDOR = '0.7.0';
 const ZONA = 'America/Argentina/Buenos_Aires';
 
 // Configuración regional de la planilla. Google interpreta las fórmulas que escribe el script
@@ -122,10 +122,131 @@ function onOpen() {
     .addItem('Ver token para la app', 'mostrarToken')
     .addSeparator()
     .addItem('Ejecutar conciliación', 'ejecutarConciliacion')
+    .addItem('Registrar ajustes y transferencias aprobados', 'registrarAjustesAprobados')
+    .addItem('Guardar foto de la conciliación', 'guardarFotoConciliacion')
+    .addItem('Cerrar la campaña', 'cerrarCampania')
     .addSeparator()
     .addItem('Cargar el conteo del enunciado (prueba)', 'cargarConteoDePrueba')
     .addItem('Reiniciar la simulación (borra conteos)', 'reiniciarSimulacion')
     .addToUi();
+}
+
+/**
+ * Diagrama, Hoja 2, fase 4: «Registrar el ajuste en Movimientos» y «Registrar transferencia entre
+ * posiciones». Toma de Conciliacion las filas con Accion Ajuste o Transferencia y Aprobado_por
+ * completo, y agrega a Movimientos un movimiento por la diferencia, con fecha del conteo. Como
+ * Conciliacion son fórmulas, esas claves pasan a OK enseguida; correrlo de nuevo no duplica nada.
+ */
+function registrarAjustesAprobados() {
+  const ui = SpreadsheetApp.getUi();
+  const p = leerParametros_();
+  const filas = leerTablaSinCache_(HOJAS.CONCILIACION).map((f) => ({
+    codigo: texto_(f.Codigo),
+    lote: texto_(f.Lote),
+    posicion: texto_(f.Posicion),
+    diferencia: Number(f.Diferencia) || 0,
+    causa: texto_(f.Causa),
+    accion: texto_(f.Accion),
+    aprobadoPor: texto_(f.Aprobado_por),
+  }));
+  const { movimientos, sinAprobar, errores } = movimientosDeAjuste(filas, { fecha: p.FECHA_CONTEO, campania: p.CAMPANIA_ACTIVA });
+
+  const avisos = [
+    ...errores,
+    ...(sinAprobar.length
+      ? [`Sin aprobar (falta Aprobado_por): ${sinAprobar.map((f) => `${f.posicion} ${f.codigo} ${f.lote}`).join(', ')}.`]
+      : []),
+  ];
+  if (!movimientos.length) {
+    avisarEnPlanilla_(['No hay ajustes ni transferencias aprobados para registrar.', ...avisos].join('\n\n'));
+    return;
+  }
+  const detalle = movimientos.map((m) => `${m.posicion} ${m.codigo} ${m.lote}: ${m.cantidad > 0 ? '+' : ''}${m.cantidad} (${m.tipo})`);
+  const respuesta = ui.alert(
+    'Registrar ajustes y transferencias',
+    `Se agregan ${movimientos.length} movimientos a Movimientos con fecha ${p.FECHA_CONTEO}:\n\n${detalle.join('\n')}` +
+      (avisos.length ? `\n\nNo se registran:\n${avisos.join('\n')}` : '') +
+      '\n\n¿Seguir?',
+    ui.ButtonSet.YES_NO,
+  );
+  if (respuesta !== ui.Button.YES) return;
+
+  const hoja = hoja_(HOJAS.MOVIMIENTOS);
+  const um = new Map(leerMateriales_().map((m) => [m.codigo, m.um]));
+  const sello = Utilities.formatDate(new Date(), ZONA, 'yyyyMMdd-HHmmss');
+  const nuevas = movimientos.map((m, i) => [
+    `${m.origen === 'TRANSFERENCIA' ? 'TR' : 'AJ'}-${sello}-${i + 1}`,
+    deIso_(m.fecha),
+    m.codigo,
+    m.lote,
+    m.cantidad,
+    um.get(m.codigo) || 'UN',
+    m.tipo,
+    m.posicion,
+    m.motivo,
+    m.origen,
+  ]);
+  hoja.getRange(hoja.getLastRow() + 1, 1, nuevas.length, nuevas[0].length).setValues(nuevas);
+  avisarEnPlanilla_(
+    `Se registraron ${nuevas.length} movimientos. La hoja Conciliacion ya se recalculó: esas claves tienen que estar en OK.`,
+  );
+}
+
+/** Guarda en una hoja nueva los valores de Conciliacion y Resumen, para comparar el antes y el después. */
+function guardarFotoConciliacion() {
+  const nombre = guardarFoto_('');
+  avisarEnPlanilla_(`Se guardó la foto en la hoja «${nombre}».`);
+}
+
+function guardarFoto_(etiqueta) {
+  const libro = SpreadsheetApp.getActive();
+  let nombre = `Foto ${Utilities.formatDate(new Date(), ZONA, 'dd-MM HH.mm')}${etiqueta ? ` ${etiqueta}` : ''}`;
+  for (let n = 2; libro.getSheetByName(nombre); n++) nombre = `${nombre.replace(/ \(\d+\)$/, '')} (${n})`;
+  const foto = libro.insertSheet(nombre);
+  const conciliacion = hoja_(HOJAS.CONCILIACION).getDataRange().getValues();
+  const resumen = hoja_(HOJAS.RESUMEN).getDataRange().getValues();
+  foto.getRange(1, 1, conciliacion.length, conciliacion[0].length).setValues(conciliacion);
+  const columnaResumen = conciliacion[0].length + 2;
+  foto.getRange(1, columnaResumen, resumen.length, resumen[0].length).setValues(resumen);
+  foto.getRange(1, 1, 1, conciliacion[0].length + 2 + resumen[0].length).setFontWeight('bold');
+  return nombre;
+}
+
+/**
+ * Diagrama, Hoja 2, fase 5: «Revisar y aprobar el cierre del conteo». Guarda la foto final, deja
+ * la campaña CERRADA en Parametros con quién la aprobó y desde ahí la app ya no acepta registros.
+ */
+function cerrarCampania() {
+  const ui = SpreadsheetApp.getUi();
+  const p = leerParametros_();
+  const pendientes = leerTablaSinCache_(HOJAS.CONCILIACION).filter((f) => texto_(f.Clasificacion) !== 'OK');
+  if (pendientes.length) {
+    const seguir = ui.alert(
+      'Cerrar la campaña',
+      `Quedan ${pendientes.length} claves con diferencia fuera de tolerancia ` +
+        `(${pendientes.map((f) => texto_(f.Clave)).slice(0, 8).join(', ')}${pendientes.length > 8 ? '…' : ''}). ¿Cerrar igual?`,
+      ui.ButtonSet.YES_NO,
+    );
+    if (seguir !== ui.Button.YES) return;
+  }
+  const pregunta = ui.prompt('Cerrar la campaña', 'Nombre de quien aprueba el cierre (Jefe de almacén):', ui.ButtonSet.OK_CANCEL);
+  if (pregunta.getSelectedButton() !== ui.Button.OK || !texto_(pregunta.getResponseText())) return;
+  const aprobo = texto_(pregunta.getResponseText());
+
+  const foto = guardarFoto_('cierre');
+  escribirParametro_('ESTADO_CAMPANIA', 'CERRADA', 'ABIERTA: la app acepta registros. CERRADA: ya no.');
+  escribirParametro_('CIERRE_FECHA', new Date(), 'Cuándo se cerró la campaña');
+  escribirParametro_('CIERRE_APROBADO_POR', aprobo, 'Quién aprobó el cierre');
+  avisarEnPlanilla_(`Campaña ${p.CAMPANIA_ACTIVA} cerrada por ${aprobo}. Foto final en la hoja «${foto}». La app ya no acepta registros.`);
+}
+
+/** Cambia (o agrega) un valor de la hoja Parametros. */
+function escribirParametro_(clave, valor, descripcion) {
+  const hoja = hoja_(HOJAS.PARAMETROS);
+  const claves = hoja.getRange(1, 1, Math.max(1, hoja.getLastRow()), 1).getValues().map((f) => texto_(f[0]));
+  const i = claves.indexOf(clave);
+  if (i >= 0) hoja.getRange(i + 1, 2).setValue(valor);
+  else hoja.getRange(hoja.getLastRow() + 1, 1, 1, 3).setValues([[clave, valor, descripcion]]);
 }
 
 /**
@@ -213,7 +334,8 @@ function reiniciarSimulacion() {
   const ui = SpreadsheetApp.getUi();
   const respuesta = ui.alert(
     'Reiniciar la simulación',
-    'Se borran los conteos, la conciliación, el resumen y el log, y Movimientos vuelve a los 40 del caso. ¿Seguir?',
+    'Se borran los conteos, la conciliación, el resumen y el log, Movimientos vuelve a los 40 del caso ' +
+      'y la campaña queda abierta. Las hojas «Foto …» no se tocan. ¿Seguir?',
     ui.ButtonSet.YES_NO,
   );
   if (respuesta !== ui.Button.YES) return;
@@ -222,6 +344,7 @@ function reiniciarSimulacion() {
     if (h.getLastRow() > 1) h.getRange(2, 1, h.getLastRow() - 1, h.getMaxColumns()).clearContent();
   });
   cargarSiVacia_(HOJAS.MOVIMIENTOS, movimientosDelCaso_());
+  escribirParametro_('ESTADO_CAMPANIA', 'ABIERTA', 'ABIERTA: la app acepta registros. CERRADA: ya no.');
   avisarEnPlanilla_('Simulación reiniciada.');
 }
 
@@ -236,6 +359,7 @@ const ACCIONES = {
   conciliacion: { lectura: true, atender: accionConciliacion_ },
   registrar: { lectura: false, atender: accionRegistrar_ },
   conciliar: { lectura: false, atender: accionConciliar_ },
+  pedirReconteo: { lectura: false, atender: accionPedirReconteo_ },
 };
 
 /** GET: ping y consultas (útil para probar desde el navegador o con curl). La app usa POST. Sin acción, es un ping. */
@@ -309,7 +433,30 @@ function accionParametros_() {
     fechaConteo: p.FECHA_CONTEO,
     fechaStockInicial: p.FECHA_STOCK_INICIAL,
     fechaDesde: p.FECHA_DESDE,
+    estadoCampania: campaniaCerrada_(p) ? 'CERRADA' : 'ABIERTA',
+    cierreAprobadoPor: texto_(p.CIERRE_APROBADO_POR),
   });
+}
+
+const campaniaCerrada_ = (p) => texto_(p.ESTADO_CAMPANIA).toUpperCase() === 'CERRADA';
+
+/**
+ * Diagrama, Hoja 2: «Solicitar el reconteo de la posición». Desde la app (Control o Jefe de almacén)
+ * marca Accion = Reconteo en las filas con diferencia de esa posición en Conciliacion.
+ */
+function accionPedirReconteo_(datos) {
+  if (!['CONTROL', 'SUPERVISOR'].includes(texto_(datos.rol))) {
+    return falla_('ROL_NO_AUTORIZADO', 'Solo Control de inventarios o el Jefe de almacén pueden pedir un reconteo.');
+  }
+  const posicion = texto_(datos.posicion).toUpperCase();
+  const filas = leerTablaSinCache_(HOJAS.CONCILIACION).filter((f) => texto_(f.Posicion) === posicion);
+  if (!filas.length) return falla_('SIN_CONCILIACION', `La posición ${posicion} no está en la hoja Conciliacion: primero hay que conciliar.`);
+  const conDiferencia = filas.filter((f) => texto_(f.Clasificacion) !== 'OK');
+  const columnaAccion = ENCABEZADOS.Conciliacion.indexOf('Accion') + 1;
+  (conDiferencia.length ? conDiferencia : filas).forEach((f) =>
+    hoja_(HOJAS.CONCILIACION).getRange(f._fila, columnaAccion).setValue('Reconteo'),
+  );
+  return { ok: true, codigo: 'RECONTEO_PEDIDO', mensaje: `Reconteo pedido para ${posicion}. Aparece en la ruta de los operarios.` };
 }
 
 function accionMaestros_() {
@@ -317,11 +464,14 @@ function accionMaestros_() {
 }
 
 function accionEstado_(datos) {
-  const campania = datos.campania || leerParametros_().CAMPANIA_ACTIVA;
+  const p = leerParametros_();
+  const campania = datos.campania || p.CAMPANIA_ACTIVA;
   const registros = leerRegistros_();
   return exito_({
     registros: registros.filter((r) => r.campania === campania).map(sinFila_),
     reconteos: leerReconteos_(registros),
+    estadoCampania: campaniaCerrada_(p) ? 'CERRADA' : 'ABIERTA',
+    cierreAprobadoPor: texto_(p.CIERRE_APROBADO_POR),
   });
 }
 
@@ -379,7 +529,11 @@ function accionRegistrar_(datos) {
     if (registro.id && registros.some((r) => r.id === registro.id)) {
       return { ok: true, codigo: 'YA_REGISTRADO', mensaje: 'El registro ya estaba en la planilla; no se duplicó.' };
     }
-    const campania = leerParametros_().CAMPANIA_ACTIVA;
+    const parametros = leerParametros_();
+    const campania = parametros.CAMPANIA_ACTIVA;
+    if (campaniaCerrada_(parametros)) {
+      return falla_('CAMPANIA_CERRADA', `La campaña ${campania} está cerrada: ya no se aceptan registros.`);
+    }
     if (registro.campania !== campania) {
       return falla_('CAMPANIA_INVALIDA', `La campaña activa es ${campania}, no ${registro.campania || '(vacía)'}.`);
     }
@@ -887,6 +1041,7 @@ function completarParametros_() {
     ['TOKEN', Utilities.getUuid().replace(/-/g, '').slice(0, 12), 'Clave que manda la app en cada llamada; si se filtra, cambiala'],
     ['TOLERANCIA_DEFECTO', 0, 'Unidades de tolerancia si el material no tiene una propia. El caso no trae costos: todos se tratan como clase A'],
     ['ALCANCE', 'A1 a G4 (28 posiciones)', 'Posiciones que se relevan en la campaña'],
+    ['ESTADO_CAMPANIA', 'ABIERTA', 'ABIERTA: la app acepta registros. CERRADA: ya no.'],
   ];
   const faltantes = iniciales.filter(([clave]) => !(clave in existentes));
   if (faltantes.length) hoja.getRange(hoja.getLastRow() + 1, 1, faltantes.length, 3).setValues(faltantes);

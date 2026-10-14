@@ -26,6 +26,7 @@ const ARCHIVOS = [
   "js/componentes/rack.js",
   "js/componentes/resultado.js",
   "js/datos/caso.js",
+  "js/dominio/ajustes.js",
   "js/dominio/cola.js",
   "js/dominio/conciliacion.js",
   "js/dominio/etiquetas.js",

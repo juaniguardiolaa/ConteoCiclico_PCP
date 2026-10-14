@@ -165,22 +165,62 @@ function pintarResultado(zona, resultado, app) {
   );
 
   const lista = zona.querySelector('#filas');
-  const pintarFilas = (soloDiferencias) => {
+  const reconteos = new Set(app.estado.reconteos);
+  let soloDiferencias = true;
+  const pintarFilas = () => {
     const visibles = soloDiferencias ? conDiferencia : filas;
     pintar(
       lista,
       visibles.length
-        ? html`${visibles.map(filaHTML)}`
+        ? html`${visibles.map((f) => filaHTML(f, reconteos))}`
         : html`<li class="nota">No hay diferencias: el físico coincide con el teórico en todas las claves.</li>`,
     );
   };
   zona.querySelectorAll('input[name="filtro"]').forEach((radio) =>
-    radio.addEventListener('change', () => pintarFilas(radio.value === 'diferencias' && radio.checked)),
+    radio.addEventListener('change', () => {
+      soloDiferencias = radio.value === 'diferencias' && radio.checked;
+      pintarFilas();
+    }),
   );
-  pintarFilas(true);
+
+  // Diagrama, Hoja 2: «Solicitar el reconteo de la posición».
+  lista.addEventListener('click', async (evento) => {
+    const boton = evento.target.closest('[data-reconteo]');
+    if (!boton) return;
+    const posicion = boton.dataset.reconteo;
+    boton.disabled = true;
+    boton.textContent = 'Pidiendo reconteo…';
+    let r;
+    try {
+      r = await app.backend.pedirReconteo(posicion);
+    } catch (error) {
+      r = { ok: false, mensaje: `No se pudo pedir el reconteo: ${error.message}` };
+    }
+    app.avisar(r.mensaje, r.ok ? 'ok' : 'error');
+    if (!r.ok) {
+      boton.disabled = false;
+      boton.textContent = `Pedir reconteo de ${posicion}`;
+      return;
+    }
+    reconteos.add(posicion);
+    // Se reemplazan solo los botones de esa posición, para que la fila abierta siga abierta.
+    lista.querySelectorAll(`[data-reconteo="${posicion}"]`).forEach((b) => {
+      const aviso = document.createElement('p');
+      aviso.className = 'fc-reconteo';
+      aviso.textContent = 'Reconteo pedido: aparece en la ruta de los operarios.';
+      b.replaceWith(aviso);
+    });
+  });
+  pintarFilas();
 }
 
-function filaHTML(f) {
+function filaHTML(f, reconteos) {
+  const accionReconteo =
+    f.clasificacion === 'OK'
+      ? ''
+      : reconteos.has(f.posicion)
+        ? html`<p class="fc-reconteo">Reconteo pedido: aparece en la ruta de los operarios.</p>`
+        : html`<button class="boton secundario fc-boton" type="button" data-reconteo="${f.posicion}">Pedir reconteo de ${f.posicion}</button>`;
   return html`
     <li class="fila-conciliacion clasif-${f.clasificacion.toLowerCase()}">
       <details>
@@ -196,6 +236,7 @@ function filaHTML(f) {
           Diferencia = ${entero(f.fisico)} − ${entero(f.teorico)} = <strong>${conSigno(f.diferencia)}</strong>
           (tolerancia ${entero(f.tolerancia)}).
         </p>
+        ${accionReconteo}
       </details>
     </li>`;
 }

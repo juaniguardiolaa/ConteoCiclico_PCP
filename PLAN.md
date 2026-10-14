@@ -15,7 +15,8 @@ Repositorio: https://github.com/juaniguardiolaa/ConteoCiclico_PCP
 | H3 · Cola sin conexión | Hecho el 14/10. Cola con espera creciente y envío al volver la red, avisos de pendientes y rechazados, interruptor para simular el corte en modo demo y service worker para abrir la app sin red. Verificado en el navegador: 3 posiciones sin conexión se envían al volver sin duplicar, y la app recarga con la red cortada. |
 | H5 · Google Sheets y Apps Script | Código hecho el 14/10 y probado con una planilla simulada en Node (13 tests del servidor y del contrato con la app). La lógica del servidor se genera desde `docs/js/dominio`, así valida y concilia igual que la app. Falta instalarlo en la cuenta juaniguardiola85@gmail.com siguiendo [apps-script/INSTALAR.md](apps-script/INSTALAR.md) (👤). |
 | H6 · Conciliación en el Sheet | Hecho el 14/10. Fórmulas SUMIFS sobre rangos con nombre en Conciliacion y Resumen, formato condicional, listas de Causa y Accion, verificación hoja contra app. Con un evaluador de fórmulas en el simulador, los tests comprueban que la hoja da la tabla esperada (24 claves, 54,2 %, 60,7 %, −25) y queda toda en OK después de la transferencia y los ajustes. Falta correrlo en la planilla real (👤). |
-| H7 y H8 | Pendientes |
+| H7 · Análisis de diferencias y cierre | Hecho el 14/10. Reconteo pedido desde la app o desde la hoja (la posición pasa sola a RECONTEO al escanearla), registro de ajustes y transferencias aprobados en Movimientos, foto de la conciliación y cierre aprobado por el Jefe de almacén. Verificado en la planilla simulada: con la transferencia F1 → F2 y los 9 ajustes, Movimientos llega a 51 filas y todo queda en OK. |
+| H8 · Pulido y documentación | Pendiente |
 
 ## Qué cambia respecto del plan del 13/10
 

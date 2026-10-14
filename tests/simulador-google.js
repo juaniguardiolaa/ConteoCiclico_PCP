@@ -325,8 +325,14 @@ export function cargarServidor({ hojasIniciales } = {}) {
     respuestas: [],
     preguntas: [],
     alertas: [],
-    Button: { YES: 'YES', NO: 'NO', OK: 'OK' },
-    ButtonSet: { YES_NO: 'YES_NO', OK: 'OK' },
+    Button: { YES: 'YES', NO: 'NO', OK: 'OK', CANCEL: 'CANCEL' },
+    ButtonSet: { YES_NO: 'YES_NO', OK: 'OK', OK_CANCEL: 'OK_CANCEL' },
+    /** prompt: la próxima respuesta es el texto que se escribe; null es «Cancelar». */
+    prompt(_titulo, texto) {
+      this.preguntas.push(texto);
+      const r = this.respuestas.shift();
+      return { getSelectedButton: () => (r === null ? 'CANCEL' : 'OK'), getResponseText: () => r ?? '' };
+    },
     /** alert(titulo, texto, botones) es una pregunta; alert(texto) es un aviso. */
     alert(...args) {
       if (args.length >= 3) {

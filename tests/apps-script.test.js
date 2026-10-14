@@ -65,7 +65,7 @@ test('setupHojas crea las 10 hojas con los datos del caso y se puede correr de n
     Stock_3009: filas('Stock_3009'),
     Movimientos: filas('Movimientos'),
   });
-  const esperado = { Parametros: 7, Maestro_Materiales: 10, Maestro_Posiciones: 28, Stock_3009: 13, Movimientos: 40 };
+  const esperado = { Parametros: 8, Maestro_Materiales: 10, Maestro_Posiciones: 28, Stock_3009: 13, Movimientos: 40 };
   assert.deepEqual(conteo(), esperado);
   assert.match(s.hoja('Maestro_Lotes').getRange('A2').getFormula(), /^=SORT\(UNIQUE\(FILTER\(/);
 
@@ -118,6 +118,8 @@ test('maestros y parámetros salen de la planilla', () => {
     fechaConteo: '2026-10-14',
     fechaStockInicial: '2026-09-30',
     fechaDesde: '2026-10-01',
+    estadoCampania: 'ABIERTA',
+    cierreAprobadoPor: '',
   });
 });
 

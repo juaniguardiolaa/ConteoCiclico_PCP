@@ -47,7 +47,22 @@ export function crearBackendDemo(almacen) {
     async estado(campania) {
       exigirConexion();
       const datos = cargar();
-      return { registros: datos.registros.filter((r) => r.campania === campania), reconteos: datos.reconteos };
+      return {
+        registros: datos.registros.filter((r) => r.campania === campania),
+        reconteos: datos.reconteos,
+        estadoCampania: 'ABIERTA',
+      };
+    },
+
+    /** En la planilla esto marca Accion = Reconteo; en el modo demo se anota en la lista de reconteos. */
+    async pedirReconteo(posicion) {
+      exigirConexion();
+      const datos = cargar();
+      if (!datos.registros.some((r) => r.posicion === posicion && r.estado === 'VALIDO')) {
+        return { ok: false, codigo: 'SIN_REGISTRO', mensaje: `La posición ${posicion} todavía no se contó.` };
+      }
+      if (!datos.reconteos.includes(posicion)) persistir({ ...datos, reconteos: [...datos.reconteos, posicion] });
+      return { ok: true, codigo: 'RECONTEO_PEDIDO', mensaje: `Reconteo pedido para ${posicion}. Aparece en la ruta de los operarios.` };
     },
 
     /** Mismo orden que el servidor: ID repetido (regla 7), validaciones, alta. */

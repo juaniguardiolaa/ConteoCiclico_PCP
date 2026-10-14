@@ -676,6 +676,8 @@ input.cantidad-grande {
 
 .rack-celda.reconteo .rack-dato {
   color: var(--larguero-tinta);
+  font-size: 0.6875rem;
+  letter-spacing: -0.01em;
 }
 
 .rack-celda.clasif-ok,
@@ -1038,6 +1040,19 @@ input.cantidad-grande {
   margin: 0;
   padding: 0 0.75rem 0.75rem;
   font-size: 0.875rem;
+}
+
+.boton.fc-boton {
+  width: calc(100% - 1.5rem);
+  margin: 0 0.75rem 0.75rem;
+}
+
+.fc-reconteo {
+  margin: 0;
+  padding: 0 0.75rem 0.75rem;
+  color: var(--larguero-tinta);
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 /* Aviso breve */
