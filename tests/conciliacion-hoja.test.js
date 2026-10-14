@@ -62,20 +62,32 @@ test('las fórmulas de la hoja Conciliacion dan exactamente la tabla esperada', 
   assert.equal(filas[0][2], 'Bolso 40cm largo Negro');
 });
 
-test('las fórmulas se escriben con setFormulas: con setValues, una planilla en es_AR las deja en #ERROR!', () => {
+test('una planilla en es_AR con las fórmulas en #ERROR! queda arreglada al conciliar (pasa a en_US)', () => {
   const s = servidorConConteoDelEnunciado();
-  // Lo que pasó en la planilla real con la versión 0.6.0: el simulador lo reproduce.
-  const prueba = s.hoja('Resumen').getRange('E1');
-  prueba.setValues([['=SUMIFS(STOCK_CANTIDAD, STOCK_CODIGO,"PROD001")']]);
-  assert.equal(prueba.getValue(), '#ERROR!');
-  prueba.setFormula('=SUMIFS(STOCK_CANTIDAD, STOCK_CODIGO,"PROD001")');
-  s.conciliar();
-  assert.equal(prueba.getValue(), 300);
+  // Lo que pasó en la planilla real con las versiones 0.6.0 y 0.6.1: setupHojas la dejaba en es_AR,
+  // donde las fórmulas con «,» no se entienden. El simulador lo reproduce.
+  s.libro.setSpreadsheetLocale('es_AR');
+  s.contexto.escribirMaestroLotes_();
+  s.hoja('Conciliacion').getRange('F2').setFormula('=SUMIFS(STOCK_CANTIDAD, STOCK_CODIGO,$B2)');
+  assert.equal(s.hoja('Maestro_Lotes').getRange('A2').getValue(), '#ERROR!');
+  assert.equal(s.hoja('Conciliacion').getRange('F2').getValue(), '#ERROR!');
 
-  const errores = ['Conciliacion', 'Resumen'].flatMap((n) =>
+  const r = s.conciliar();
+  assert.equal(s.libro.getSpreadsheetLocale(), 'en_US');
+  assert.equal(r.datos.verificacion.coinciden, true);
+  assert.equal(s.hoja('Maestro_Lotes').filasDeDatos().length, 22);
+  const errores = ['Conciliacion', 'Resumen', 'Maestro_Lotes'].flatMap((n) =>
     s.hoja(n).filasDeDatos().flat().filter((v) => typeof v === 'string' && v.startsWith('#')),
   );
   assert.deepEqual(errores, []);
+});
+
+test('setupHojas deja la planilla en en_US para que las fórmulas con «,» funcionen', () => {
+  const s = cargarServidor();
+  assert.equal(s.libro.getSpreadsheetLocale(), 'es_AR');
+  s.contexto.setupHojas();
+  assert.equal(s.libro.getSpreadsheetLocale(), 'en_US');
+  assert.equal(s.hoja('Maestro_Lotes').filasDeDatos().length, 22);
 });
 
 test('el servidor compara lo que calculó la hoja con la app y avisa que coinciden', () => {

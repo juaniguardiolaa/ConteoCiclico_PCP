@@ -21,6 +21,9 @@ function conFormatoLibre(objeto) {
   });
 }
 
+/** Configuraciones regionales con coma decimal: en ellas los argumentos de las fórmulas van con «;». */
+const usaPuntoYComa = (locale) => !/^en/.test(locale);
+
 function tieneComaFueraDeTexto(formula) {
   let enTexto = false;
   for (const c of formula) {
@@ -45,21 +48,16 @@ class Rango {
   getValue() {
     return this.getValues()[0][0];
   }
-  /**
-   * Como en Apps Script: un texto que empieza con «=» se toma como fórmula, pero escrita como la
-   * tipearía una persona, con la configuración regional de la planilla (es_AR: argumentos con «;»).
-   */
+  /** Como en Apps Script: un texto que empieza con «=» se toma como fórmula. */
   setValues(valores) {
-    valores.forEach((fila, i) => fila.forEach((v, j) => this.hoja.escribir(this.fila + i, this.columna + j, v, 'tipeado')));
+    valores.forEach((fila, i) => fila.forEach((v, j) => this.hoja.escribir(this.fila + i, this.columna + j, v)));
     return conFormatoLibre(this);
   }
   setValue(valor) {
     return this.setValues([[valor]]);
   }
-  /** setFormula y setFormulas usan la sintaxis estándar (funciones en inglés, argumentos con «,»). */
   setFormulas(formulas) {
-    formulas.forEach((fila, i) => fila.forEach((v, j) => this.hoja.escribir(this.fila + i, this.columna + j, v, 'formula')));
-    return conFormatoLibre(this);
+    return this.setValues(formulas);
   }
   setFormula(formula) {
     return this.setFormulas([[formula]]);
@@ -94,7 +92,7 @@ class Hoja {
     this.libro = libro;
     this.celdas = []; // celdas[fila-1][columna-1]
     this.formulas = new Map(); // "fila,columna" -> fórmula
-    this.tipeadas = new Set(); // fórmulas que llegaron por setValues (se leen con la configuración es_AR)
+    this.malInterpretadas = new Set(); // fórmulas con «,» escritas con la planilla en una configuración que usa «;»
     this.protecciones = [];
     this.reglasFormato = [];
     this.validaciones = [];
@@ -102,26 +100,29 @@ class Hoja {
   getName() {
     return this.nombre;
   }
-  escribir(fila, columna, valor, modo = 'tipeado') {
+  /**
+   * Como en la planilla real: setValues y setFormula interpretan la fórmula con la configuración
+   * regional de la planilla. En es_AR los argumentos van con «;», así que una fórmula con «,» queda
+   * en #ERROR! (y sigue así aunque después se cambie la configuración, hasta que se vuelva a escribir).
+   */
+  escribir(fila, columna, valor) {
     const clave = `${fila},${columna}`;
     this.libro.version++;
+    this.malInterpretadas.delete(clave);
     if (typeof valor === 'string' && valor.startsWith('=')) {
       this.formulas.set(clave, valor);
-      if (modo === 'tipeado') this.tipeadas.add(clave);
-      else this.tipeadas.delete(clave);
+      if (usaPuntoYComa(this.libro.locale) && tieneComaFueraDeTexto(valor)) this.malInterpretadas.add(clave);
       valor = '';
     } else {
       this.formulas.delete(clave);
-      this.tipeadas.delete(clave);
     }
     while (this.celdas.length < fila) this.celdas.push([]);
     this.celdas[fila - 1][columna - 1] = valor;
   }
   /** Valor visible de una celda: el resultado de su fórmula, el derrame de una fórmula vecina o lo escrito. */
   leerCelda(fila, columna) {
+    if (this.malInterpretadas.has(`${fila},${columna}`)) return '#ERROR!';
     const formula = this.formulas.get(`${fila},${columna}`);
-    // En una planilla es_AR, una coma fuera de un texto en una fórmula tipeada es un error de análisis.
-    if (formula && this.tipeadas.has(`${fila},${columna}`) && tieneComaFueraDeTexto(formula)) return '#ERROR!';
     if (formula) {
       const v = this.libro.evaluar(this, fila, columna, formula);
       if (esError(v)) return v.error;
@@ -185,7 +186,9 @@ class Hoja {
 }
 
 class Libro {
-  constructor(hojasIniciales = ['Hoja 1']) {
+  /** Una planilla nueva de una cuenta argentina arranca en es_AR, como la del grupo. */
+  constructor(hojasIniciales = ['Hoja 1'], locale = 'es_AR') {
+    this.locale = locale;
     this.version = 0;
     this.cache = new Map();
     this.enCurso = new Set();
@@ -216,7 +219,13 @@ class Libro {
   getSpreadsheetTimeZone() {
     return this.zona;
   }
-  setSpreadsheetLocale() {}
+  setSpreadsheetLocale(locale) {
+    this.locale = locale;
+    this.version++;
+  }
+  getSpreadsheetLocale() {
+    return this.locale;
+  }
   setNamedRange(nombre, rango) {
     const [desde, hasta] = rango.getA1Notation().split(':');
     // Un rango que llega a la fila 1000 se toma abierto (A2:A), como lo crea Code.gs.

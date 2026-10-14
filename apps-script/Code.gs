@@ -7,8 +7,14 @@
 // Este archivo se edita acá. Datos.gs y Dominio.gs se generan con npm run apps-script, que también
 // arma conteo-ciclico.gs: el archivo único que se pega en el editor de Apps Script.
 
-const VERSION_SERVIDOR = '0.6.1';
+const VERSION_SERVIDOR = '0.6.2';
 const ZONA = 'America/Argentina/Buenos_Aires';
+
+// Configuración regional de la planilla. Google interpreta las fórmulas que escribe el script
+// (setFormula o setValues) con la configuración de la planilla: en es_AR los argumentos van con «;»
+// y las fórmulas de este archivo, escritas con «,», quedan en #ERROR!. Con en_US se leen bien.
+// Las fechas igual se ven como dd/mm/aaaa porque cada columna tiene su formato.
+const CONFIGURACION_REGIONAL = 'en_US';
 
 const HOJAS = {
   PARAMETROS: 'Parametros',
@@ -70,7 +76,7 @@ const COLORES_CLASIFICACION = {
 function setupHojas() {
   const libro = SpreadsheetApp.getActive();
   libro.setSpreadsheetTimeZone(ZONA);
-  libro.setSpreadsheetLocale('es_AR');
+  asegurarConfiguracionRegional_();
 
   Object.values(HOJAS).forEach((nombre) => prepararHoja_(libro, nombre));
 
@@ -80,13 +86,7 @@ function setupHojas() {
   cargarSiVacia_(HOJAS.MOVIMIENTOS, movimientosDelCaso_());
   completarParametros_();
 
-  // Maestro_Lotes es una fórmula: los pares material-lote que aparecen en el stock o en movimientos.
-  hoja_(HOJAS.LOTES)
-    .getRange('A2')
-    .setFormula(
-      '=SORT(UNIQUE(FILTER({Stock_3009!A2:A, Stock_3009!C2:C; Movimientos!C2:C, Movimientos!D2:D}, ' +
-        '{Stock_3009!C2:C; Movimientos!D2:D} <> "")))',
-    );
+  escribirMaestroLotes_();
 
   hoja_(HOJAS.MOVIMIENTOS).getRange('B2:B').setNumberFormat('dd/mm/yyyy');
   hoja_(HOJAS.CONTEO).getRange('B2:B').setNumberFormat('dd/mm/yyyy hh:mm:ss');
@@ -180,6 +180,25 @@ function cargarConteoDePrueba() {
   );
   hoja.getRange(2, 1, registros.length, ENCABEZADOS.Conteo_1410.length).setValues(registros.map(filaDeRegistro_));
   avisarEnPlanilla_(`Se cargaron las ${registros.length} posiciones del enunciado. Ahora: Inventario → Ejecutar conciliación.`);
+}
+
+/** Deja la planilla en en_US (ver CONFIGURACION_REGIONAL) antes de escribir fórmulas. */
+function asegurarConfiguracionRegional_() {
+  const libro = SpreadsheetApp.getActive();
+  if (libro.getSpreadsheetLocale() !== CONFIGURACION_REGIONAL) {
+    libro.setSpreadsheetLocale(CONFIGURACION_REGIONAL);
+    SpreadsheetApp.flush();
+  }
+}
+
+/** Maestro_Lotes es una fórmula: los pares material-lote que aparecen en el stock o en movimientos. */
+function escribirMaestroLotes_() {
+  hoja_(HOJAS.LOTES)
+    .getRange('A2')
+    .setFormula(
+      '=SORT(UNIQUE(FILTER({Stock_3009!A2:A, Stock_3009!C2:C; Movimientos!C2:C, Movimientos!D2:D}, ' +
+        '{Stock_3009!C2:C; Movimientos!D2:D} <> "")))',
+    );
 }
 
 function mostrarToken() {
@@ -448,6 +467,10 @@ function conciliarEnHoja_({ forzar = false, usuario = '' } = {}) {
     toleranciaDefecto: Number(p.TOLERANCIA_DEFECTO) || 0,
   });
 
+  // Si la planilla quedó en otra configuración regional, las fórmulas (también las de Maestro_Lotes)
+  // se reescriben después de pasarla a en_US.
+  asegurarConfiguracionRegional_();
+  escribirMaestroLotes_();
   definirRangosConNombre_();
   escribirConciliacion_(filas);
   escribirResumen_(materiales, usuario || 'Sin usuario');

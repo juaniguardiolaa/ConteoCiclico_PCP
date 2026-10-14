@@ -25,9 +25,11 @@ envía cada registro a Google Sheets y dispara la conciliación contra el stock 
 - El servidor se prueba con `tests/simulador-google.js` (SpreadsheetApp, Utilities, LockService y
   ContentService simulados; las fórmulas se calculan con `tests/formulas-simuladas.js`). Si Code.gs
   usa un método o una función de hoja nueva, hay que sumarlos al simulador.
-- Fórmulas en la planilla: SIEMPRE con setFormula/setFormulas (sintaxis estándar, argumentos con «,»).
-  Nunca con setValues: la planilla está en es_AR y las interpreta como tipeadas (argumentos con «;»),
-  quedan en #ERROR!. El simulador reproduce ese comportamiento.
+- Configuración regional: la planilla va en en_US (CONFIGURACION_REGIONAL en Code.gs). Google
+  interpreta las fórmulas que escribe el script (setFormula o setValues) con la configuración de la
+  planilla; en es_AR espera «;» y las fórmulas con «,» quedan en #ERROR! (pasó con la 0.6.0 y la 0.6.1).
+  setupHojas y la conciliación la pasan a en_US. El simulador arranca en es_AR y reproduce el error.
+- Fórmulas con setFormula/setFormulas y valores con setValues, por claridad.
 - Cada archivo nuevo de `docs/` va en la lista ARCHIVOS de `docs/sw.js` (lo controla un test).
 
 ## Reglas del negocio

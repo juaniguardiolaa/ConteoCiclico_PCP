@@ -85,6 +85,10 @@ El último tiene que responder `POSICION_INEXISTENTE`, y la llamada queda anotad
 | Cargar el conteo del enunciado (prueba) | Reemplaza Conteo_1410 por el stock físico del 14/10 del enunciado (28 posiciones), para verificar la conciliación sin recorrer el rack. Pide confirmación. |
 | Reiniciar la simulación | Borra conteos, conciliación, resumen y log, y deja Movimientos con los 40 del caso. Sirve para ensayar antes del 24/10. Pide confirmación. |
 
+## Configuración regional de la planilla
+
+La planilla queda en **Inglés (Estados Unidos)** (Archivo → Configuración → Configuración regional). No hay que tocarlo: lo hacen `setupHojas` y la conciliación. Es necesario porque Google interpreta las fórmulas que escribe el script con la configuración de la planilla, y en «Argentina» los argumentos se separan con «;»: las fórmulas del script, escritas con «,», quedarían en `#ERROR!`. Las fechas se siguen viendo como dd/mm/aaaa; los decimales se ven con punto (54.2%).
+
 ## Cómo leer la conciliación
 
 - Cada número de **Conciliacion** es una fórmula: al hacer clic en una celda se ve, por ejemplo, `=SUMIFS(MOV_CANTIDAD, MOV_CODIGO,$B2, MOV_LOTE,$D2, MOV_POSICION,$E2, MOV_FECHA,">="&FECHA_DESDE, MOV_FECHA,"<="&FECHA_CONTEO, MOV_TIPO,"Ingreso_Orden_Compra") + …`.
