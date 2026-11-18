@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>La app en vivo · TP6 Conteo cíclico</title>
+  <meta name="description" content="Presentación interactiva del uso de la app de conteo cíclico y conciliación de inventarios. TP6, Planificación y Control de la Producción, UTN FRH 2026.">
+  <meta name="theme-color" content="#173C6E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='2' width='4' height='28' fill='%231F4F8F'/%3E%3Crect x='25' y='2' width='4' height='28' fill='%231F4F8F'/%3E%3Crect x='7' y='11' width='18' height='3' fill='%23E8650F'/%3E%3Crect x='7' y='22' width='18' height='3' fill='%23E8650F'/%3E%3Crect x='10' y='4' width='12' height='7' fill='%23C9A877'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Condensed:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="presentacion.css">
+  <script type="module" src="js/presentacion.js"></script>
+</head>
+<body>
+<main class="escenario" id="escenario">
+
+  <!-- ===================================================================== PORTADA -->
+  <section class="diapo oscura" id="portada" data-titulo="Portada">
+    <div class="portada-texto">
+      <p class="volanta">TP N.º 6 · Planificación y Control de la Producción · UTN FRH</p>
+      <h1>La app de conteo cíclico, en vivo</h1>
+      <p class="portada-bajada">Del rack a la conciliación en Google Sheets. Lo que vamos a tocar corre con el mismo código que la app.</p>
+      <p class="portada-ayuda"><kbd>→</kbd> o el clicker para avanzar · <kbd>F</kbd> pantalla completa</p>
+    </div>
+    <div class="portada-rack" data-zona="rack-portada"></div>
+    <div class="tarjeta-qr">
+      <div class="qr-marco" data-zona="qr-app"></div>
+      <p>Abrí la app en el celular<br><b>juaniguardiolaa.github.io/ConteoCiclico_PCP</b></p>
+    </div>
+  </section>
+
+  <!-- ===================================================================== A1 -->
+  <section class="diapo" id="preparar" data-codigo="A1" data-seccion="A" data-titulo="Antes de contar">
+    <header class="cabeza">
+      <h2>Antes de contar: abrir, elegir rol y conectar</h2>
+      <span class="codigo">A1</span>
+    </header>
+    <div class="tres-pasos">
+      <article class="paso-tarjeta">
+        <span class="paso-num">1</span>
+        <h3>Abrir la app</h3>
+        <p>Desde el navegador del celular. No se instala nada y queda guardada para abrir sin señal.</p>
+        <p class="url">juaniguardiolaa.github.io<br>/ConteoCiclico_PCP</p>
+        <p class="nota">Se publica con GitHub Pages: no hay servidor propio ni costo.</p>
+      </article>
+      <article class="paso-tarjeta">
+        <span class="paso-num">2</span>
+        <h3>Nombre y rol</h3>
+        <label class="campo">Nombre en esta demo<input data-zona="nombre" autocomplete="off" spellcheck="false"></label>
+        <p class="chico">Cada rol es un carril del diagrama de flujo. Tocá uno:</p>
+        <div class="roles" data-zona="roles"></div>
+        <div class="rol-detalle" data-zona="rol-detalle" aria-live="polite"></div>
+      </article>
+      <article class="paso-tarjeta">
+        <span class="paso-num">3</span>
+        <h3>Conectar con la planilla</h3>
+        <p>En Ajustes se escanea el QR de configuración que muestra Control: trae la dirección del Web App y el token.</p>
+        <div class="qr-config"><div data-zona="qr-config"></div><span>QR de ejemplo: el real no se proyecta, porque lleva el token.</span></div>
+        <p class="nota">Sin conectar, la app anda en <b>modo demo</b>: lo que se carga nunca llega a la planilla.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===================================================================== A2 -->
+  <section class="diapo" id="etiquetas" data-codigo="A2" data-seccion="A" data-titulo="Las etiquetas">
+    <header class="cabeza">
+      <h2>Cada etiqueta dice qué es</h2>
+      <span class="codigo">A2</span>
+      <p class="bajada">QR y Code 128 con el mismo texto. El prefijo <code>POS:</code> o <code>MAT:</code> le dice a la app qué se escaneó.</p>
+    </header>
+    <div class="etiquetas-grilla">
+      <div class="muestras">
+        <p class="chico">Tocá una etiqueta para escanearla:</p>
+        <div data-zona="muestras" class="muestras-lista"></div>
+        <p class="nota">Si el operario escanea un producto cuando la app espera la posición, la lectura se rechaza: no hay forma de cargar un dato en el campo equivocado.</p>
+      </div>
+      <div class="lector-prueba">
+        <h3>Probá el lector</h3>
+        <label class="campo">Texto que leyó la cámara<input data-zona="lector-texto" value="POS:B2" spellcheck="false" autocomplete="off"></label>
+        <div class="chips" data-zona="lector-chips"></div>
+        <div class="lectura" data-zona="lector-resultado" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== B1 -->
+  <section class="diapo" id="contar" data-codigo="B1" data-seccion="B" data-titulo="Contar una posición">
+    <header class="cabeza">
+      <h2>Contar una posición, en vivo</h2>
+      <span class="codigo">B1</span>
+      <p class="bajada">Tocá las etiquetas del rack como si las escanearas. Primero la posición, después la caja.</p>
+    </header>
+    <div class="contar-grilla">
+      <div class="celular" data-zona="celular"></div>
+      <div class="deposito" data-zona="deposito">
+        <div class="deposito-cabeza">
+          <b data-zona="avance"></b>
+          <span class="chico">Cada caja trae impresa la cantidad física, como en la simulación con cartulina.</span>
+        </div>
+        <div data-zona="rack-contar"></div>
+        <div class="pruebas"><span class="chico">Etiquetas de prueba:</span><div class="chips" data-zona="pruebas-contar"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== C1 -->
+  <section class="diapo" id="controles" data-codigo="C1" data-seccion="C" data-titulo="Siete controles">
+    <header class="cabeza">
+      <h2>Siete controles: probá romperla</h2>
+      <span class="codigo">C1</span>
+      <p class="bajada">Cada botón corre la validación real y muestra el mensaje exacto que ve el operario.</p>
+    </header>
+    <div class="controles-grilla">
+      <div class="controles" data-zona="controles"></div>
+      <div class="control-final">
+        <button type="button" class="boton" data-accion="probar-todos">Probar los siete</button>
+        <p class="nota">Las funciones están en <code>docs/js/dominio/validaciones.js</code>. Apps Script las repite antes de escribir: se copian sin cambios en <code>Dominio.gs</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== D1 -->
+  <section class="diapo" id="sin-senal" data-codigo="D1" data-seccion="D" data-titulo="Sin señal">
+    <header class="cabeza">
+      <h2>Sin señal no se pierde nada</h2>
+      <span class="codigo">D1</span>
+      <p class="bajada">Cortá la señal, confirmá un par de posiciones y volvé a conectar. Es la cola real de la app.</p>
+    </header>
+    <div class="senal-grilla">
+      <div class="senal-celular">
+        <button type="button" class="interruptor" role="switch" aria-checked="true" data-accion="red">
+          <span class="interruptor-pista"><span class="interruptor-bola"></span></span>
+          <span class="red-texto">Con señal</span>
+        </button>
+        <button type="button" class="boton" data-accion="confirmar">Confirmar la posición A1</button>
+        <div data-zona="cola"></div>
+        <div class="senal-acciones">
+          <button type="button" class="boton secundario" data-accion="reintentar">Reintentar ahora</button>
+          <button type="button" class="boton secundario" data-accion="reenviar">Reenviar el último (mismo ID)</button>
+        </div>
+        <p class="reenvio" data-zona="reenvio" aria-live="polite"></p>
+      </div>
+      <div class="senal-explica">
+        <ol class="claves-lista">
+          <li><span><b>Queda en el celular.</b> Lo confirmado se guarda con un punto naranja hasta que llega.</span></li>
+          <li><span><b>Reintenta solo.</b> A los 2, 4, 8 segundos… hasta 1 minuto, y apenas vuelve la red.</span></li>
+          <li><span><b>Nunca duplica.</b> El ID lo genera el celular: si el servidor ya lo tiene, responde YA_REGISTRADO.</span></li>
+        </ol>
+        <div class="mini-hoja">
+          <p class="mini-hoja-titulo"><span class="mono">Conteo_1410</span> en la planilla</p>
+          <table class="mini-tabla">
+            <thead><tr><th>ID</th><th>Hora</th><th>Pos.</th><th>Código</th><th>Lote</th><th class="num">Cant.</th><th>Estado</th></tr></thead>
+            <tbody data-zona="planilla-filas"></tbody>
+          </table>
+          <p class="mini-hoja-titulo"><span class="mono">Log_API</span></p>
+          <ul class="log" data-zona="planilla-log"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== E1 -->
+  <section class="diapo" id="viaje" data-codigo="E1" data-seccion="E" data-titulo="El viaje de un registro">
+    <header class="cabeza">
+      <h2>Qué pasa cuando tocás «Confirmar y enviar»</h2>
+      <span class="codigo">E1</span>
+      <p class="bajada"><span data-zona="viaje-origen"></span>. Avanzá con <kbd>→</kbd>.</p>
+    </header>
+    <div class="viaje" data-paso="0">
+      <div class="nodo nodo-celular">
+        <h3>Celular</h3>
+        <p class="nodo-sub">App en GitHub Pages</p>
+        <pre class="json" data-zona="viaje-pedido"></pre>
+        <p class="nodo-ok">✓ Enviado</p>
+      </div>
+      <div class="tramo tramo-ida"><span>POST · text/plain<br>sin preflight de CORS</span></div>
+      <div class="nodo nodo-script">
+        <h3>Web App</h3>
+        <p class="nodo-sub">Google Apps Script</p>
+        <ol class="chequeos">
+          <li data-desde="2"><span><b>Token</b> igual al de Parametros</span></li>
+          <li data-desde="3"><span><b>LockService</b>: un envío por vez</span></li>
+          <li data-desde="4"><span><b>Valida</b> otra vez las reglas 1 a 7</span></li>
+          <li data-desde="5"><span><b>Agrega</b> la fila en Conteo_1410</span></li>
+          <li data-desde="6"><span><b>Anota</b> la llamada en Log_API</span></li>
+        </ol>
+        <pre class="json respuesta" data-zona="viaje-respuesta"></pre>
+      </div>
+      <div class="tramo tramo-hoja"><span>appendRow</span></div>
+      <div class="nodo nodo-hoja">
+        <h3>Google Sheets</h3>
+        <p class="nodo-sub mono">Conteo_1410</p>
+        <table class="mini-tabla">
+          <thead><tr><th>ID</th><th>Hora</th><th>Pos.</th><th>Código</th><th>Lote</th><th class="num">Cant.</th><th>Estado</th></tr></thead>
+          <tbody data-zona="viaje-filas"></tbody>
+        </table>
+        <p class="nodo-sub mono">Log_API</p>
+        <p class="log-linea" data-zona="viaje-log"></p>
+      </div>
+      <div class="paquete" aria-hidden="true">{ }</div>
+      <button type="button" class="boton secundario repetir" data-accion="repetir-viaje">Repetir</button>
+    </div>
+  </section>
+
+  <!-- ===================================================================== E2 -->
+  <section class="diapo" id="hojas" data-codigo="E2" data-seccion="E" data-titulo="La planilla">
+    <header class="cabeza">
+      <h2>La planilla por dentro, con los datos de esta demo</h2>
+      <span class="codigo">E2</span>
+    </header>
+    <div class="hojas-grilla">
+      <ul class="hojas-lista" data-zona="hojas-lista"></ul>
+      <div class="hoja">
+        <div class="hoja-barra">
+          <span class="hoja-nombre mono" data-zona="hoja-nombre"></span>
+          <span class="hoja-nota" data-zona="hoja-nota"></span>
+        </div>
+        <div class="hoja-fx"><span class="hoja-celda mono" data-zona="hoja-celda"></span><span class="fx">fx</span><code data-zona="hoja-fx"></code></div>
+        <div class="hoja-grilla" data-zona="hoja-grilla"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== F1 -->
+  <section class="diapo" id="conciliar" data-codigo="F1" data-seccion="F" data-titulo="Conciliar">
+    <header class="cabeza">
+      <h2>Conciliar: teórico contra físico</h2>
+      <span class="codigo">F1</span>
+      <p class="bajada">Teórico = stock al 30/09 + movimientos del 01 al 14/10. Diferencia = físico − teórico. Tocá una posición para ver la cuenta.</p>
+    </header>
+    <div class="conc-grilla">
+      <div class="conc-izquierda">
+        <p class="conc-cobertura" data-zona="conc-cobertura"></p>
+        <div class="conc-botones">
+          <button type="button" class="boton secundario" data-accion="completar">Completar con el conteo del 14/10</button>
+          <button type="button" class="boton" data-accion="conciliar">Conciliar</button>
+        </div>
+        <div data-zona="conc-rack"></div>
+        <ul class="leyenda">
+          <li class="res-OK">OK</li><li class="res-FALTANTE">Faltante</li><li class="res-SOBRANTE">Sobrante</li><li class="res-UBICACION">Ubicación</li><li class="res-NO_REGISTRADO">No registrado</li>
+        </ul>
+      </div>
+      <div class="conc-derecha">
+        <div class="indicadores" data-zona="conc-indicadores"></div>
+        <p class="conc-aviso" data-zona="conc-aviso" aria-live="polite"></p>
+        <div class="conc-detalle" data-zona="conc-detalle"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== G1 -->
+  <section class="diapo" id="ajustes" data-codigo="G1" data-seccion="G" data-titulo="Ajustes y cierre">
+    <header class="cabeza">
+      <h2>Cada diferencia termina en una acción aprobada</h2>
+      <span class="codigo">G1</span>
+      <p class="bajada">Control completa Causa y Acción; el Jefe de almacén firma Aprobado_por. Recién ahí se registran los movimientos.</p>
+    </header>
+    <div class="ajustes-grilla">
+      <div class="ajustes-tabla">
+        <div class="ajustes-botones">
+          <button type="button" class="boton secundario" data-accion="sugerir">1 · Control: causa y acción</button>
+          <button type="button" class="boton secundario" data-accion="firmar">2 · Jefe: firmar Aprobado_por</button>
+          <button type="button" class="boton" data-accion="registrar-ajustes">3 · Registrar ajustes y transferencias aprobados</button>
+        </div>
+        <p class="ajustes-aviso" data-zona="ajustes-aviso" aria-live="polite"></p>
+        <div data-zona="ajustes"></div>
+      </div>
+      <aside class="ajustes-lado">
+        <h3>Antes y después</h3>
+        <div data-zona="antes-despues"></div>
+        <p class="nota">El 100 % de después es esperable: los ajustes llevan el teórico al físico. El indicador que mide la calidad del inventario es el de antes.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ===================================================================== G2 -->
+  <section class="diapo oscura" id="cierre" data-codigo="G2" data-seccion="G" data-titulo="Ahora ustedes">
+    <div class="cierre-texto">
+      <h2>Ahora ustedes</h2>
+      <ol class="cierre-pasos">
+        <li><span>Escaneen el QR y abran la app en el celular.</span></li>
+        <li><span>Pongan su nombre y elijan <b>Control de inventarios</b>.</span></li>
+        <li><span>En Ajustes, toquen <b>Cargar el conteo del enunciado</b>.</span></li>
+        <li><span>En Conciliación, miren las 11 diferencias y pidan un reconteo.</span></li>
+      </ol>
+      <ul class="cierre-enlaces">
+        <li><a href="../" target="_blank" rel="noopener">La app</a></li>
+        <li><a href="../etiquetas.html" target="_blank" rel="noopener">Etiquetas para imprimir</a></li>
+        <li><a href="../diagrama/" target="_blank" rel="noopener">Diagrama de flujo</a></li>
+        <li><a href="https://github.com/juaniguardiolaa/ConteoCiclico_PCP" target="_blank" rel="noopener">Código en GitHub</a></li>
+      </ul>
+      <p class="cierre-preguntas">¿Preguntas?</p>
+      <p class="cierre-reinicio"><button type="button" class="boton-texto" data-accion="reiniciar">Reiniciar la demostración</button> <span data-zona="reiniciado" aria-live="polite"></span></p>
+    </div>
+    <div class="tarjeta-qr grande">
+      <div class="qr-marco" data-zona="qr-app"></div>
+      <p><b>juaniguardiolaa.github.io/ConteoCiclico_PCP</b></p>
+    </div>
+  </section>
+
+  <!-- ===================================================================== BARRA -->
+  <nav class="barra" aria-label="Recorrido de la presentación">
+    <div class="barra-rack" data-zona="barra-rack"></div>
+    <div class="barra-controles">
+      <span class="contador" data-zona="contador"></span>
+      <button type="button" class="barra-boton" data-nav="anterior" aria-label="Anterior">←</button>
+      <button type="button" class="barra-boton" data-nav="siguiente" aria-label="Siguiente">→</button>
+      <button type="button" class="barra-boton" data-nav="sonido" aria-pressed="true" aria-label="Sonido del lector">♪</button>
+      <button type="button" class="barra-boton" data-nav="pantalla" aria-label="Pantalla completa" title="Pantalla completa (F)">⛶</button>
+    </div>
+  </nav>
+</main>
+<noscript><p>La presentación necesita JavaScript activado.</p></noscript>
+</body>
+</html>

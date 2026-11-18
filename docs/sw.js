@@ -45,7 +45,21 @@ const ARCHIVOS = [
   "js/pantallas/ruta.js",
   "js/roles.js",
   "js/ui.js",
-  "js/version.js"
+  "js/version.js",
+  "presentacion/index.html",
+  "presentacion/presentacion.css",
+  "presentacion/js/conciliar.js",
+  "presentacion/js/controles.js",
+  "presentacion/js/deck.js",
+  "presentacion/js/estado.js",
+  "presentacion/js/planilla.js",
+  "presentacion/js/portada.js",
+  "presentacion/js/preparar.js",
+  "presentacion/js/presentacion.js",
+  "presentacion/js/rack.js",
+  "presentacion/js/simulador.js",
+  "presentacion/js/sinsenal.js",
+  "presentacion/js/sonido.js"
 ];
 
 const LIBRERIAS = [

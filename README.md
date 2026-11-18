@@ -11,6 +11,7 @@ App web para el celular que simula el conteo cíclico del 14/10/2026 de un almac
 | **App** | https://juaniguardiolaa.github.io/ConteoCiclico_PCP/ |
 | **Etiquetas para imprimir** | https://juaniguardiolaa.github.io/ConteoCiclico_PCP/etiquetas.html |
 | **Diagrama de flujo** | https://juaniguardiolaa.github.io/ConteoCiclico_PCP/diagrama/ ([Hoja 1](docs/diagrama/hoja1.png), [Hoja 2](docs/diagrama/hoja2.png)) |
+| **Presentación interactiva** | https://juaniguardiolaa.github.io/ConteoCiclico_PCP/presentacion/ (se avanza con → o el clicker; F para pantalla completa) |
 | **Planilla de Google Sheets** | Se comparte por mail con la cátedra. El enlace no se publica porque la hoja Parametros tiene el token del Web App. |
 | **Guion de la simulación** | [SIMULACION.md](SIMULACION.md) |
 | **Instalar la planilla** | [apps-script/INSTALAR.md](apps-script/INSTALAR.md) |
@@ -113,6 +114,7 @@ npm test
 | `docs/` | La app (HTML, CSS y JavaScript sin build). Es lo que publica GitHub Pages. |
 | `docs/js/dominio/` | Lógica pura con tests: etiquetas, validaciones, registros, cola, conciliación, indicadores, ajustes. |
 | `docs/js/pantallas/` | Una pantalla por paso del diagrama de flujo. |
+| `docs/presentacion/` | Presentación para la clase: once diapositivas con demos en vivo (conteo, controles, cola sin señal, planilla, conciliación y ajustes) que usan los mismos módulos de `docs/js/dominio/`. Lo que se carga ahí queda en el navegador y no toca la planilla. |
 | `apps-script/` | Servidor: `Code.gs` (se edita a mano), `Datos.gs` y `Dominio.gs` (generados) y `conteo-ciclico.gs`, el archivo único que se pega en Apps Script. |
 | `data/` | Excel del caso entregado por la cátedra, sin modificar. |
 | `scripts/` | Exportación de datos del Excel, generación del código de Apps Script y servidor local. |
