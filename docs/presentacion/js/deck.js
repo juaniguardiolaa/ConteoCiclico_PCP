@@ -1,6 +1,6 @@
 // Motor de la presentación: escala el escenario de 1600 × 900 a cualquier pantalla, navega con el
-// teclado, el clicker (PageUp/PageDown) o la barra de abajo, y avisa a cada diapositiva cuando entra,
-// sale o avanza un paso. La dirección guarda la diapositiva (#5), así un F5 no vuelve al principio.
+// teclado, el clicker (PageUp/PageDown) o la barra de abajo, y avisa a cada diapositiva cuando entra
+// o sale. La dirección guarda la diapositiva (#5), así un F5 no vuelve al principio.
 import { alternarSonido, sonidoActivo } from './sonido.js';
 
 const ANCHO = 1600;
@@ -20,13 +20,9 @@ const SECCIONES = {
 const hooks = new Map();
 let diapos = [];
 let actual = -1;
-let paso = 0;
 let escenario;
 
-/**
- * Cada diapositiva interactiva se engancha por su id:
- * { alEntrar(), alSalir(), pasos, alPaso(n), tecla(evento) -> true si la usó }.
- */
+/** Cada diapositiva interactiva se engancha por su id: { alEntrar(), alSalir(), tecla(evento) -> true si la usó }. */
 export function registrarDiapo(id, hook) {
   hooks.set(id, hook);
 }
@@ -53,7 +49,7 @@ function leerHash() {
   return Number.isFinite(n) ? n - 1 : 0;
 }
 
-function ir(indice, { atras = false } = {}) {
+function ir(indice) {
   const destino = Math.max(0, Math.min(diapos.length - 1, indice));
   if (destino === actual) return;
   const previa = diapos[actual];
@@ -67,40 +63,13 @@ function ir(indice, { atras = false } = {}) {
   const diapo = diapos[actual];
   diapo.inert = false;
   diapo.classList.add('activa');
-  const hook = hooks.get(diapo.id);
-  paso = atras && hook?.pasos ? hook.pasos : 0;
-  hook?.alEntrar?.();
-  if (hook?.pasos) hook.alPaso?.(paso);
+  hooks.get(diapo.id)?.alEntrar?.();
   history.replaceState(null, '', `#${actual + 1}`);
   actualizarBarra();
 }
 
-export function siguiente() {
-  const hook = hooks.get(diapos[actual].id);
-  if (hook?.pasos && paso < hook.pasos) {
-    paso += 1;
-    hook.alPaso?.(paso);
-    return;
-  }
-  ir(actual + 1);
-}
-
-export function anterior() {
-  const hook = hooks.get(diapos[actual].id);
-  if (hook?.pasos && paso > 0) {
-    paso -= 1;
-    hook.alPaso?.(paso);
-    return;
-  }
-  ir(actual - 1, { atras: true });
-}
-
-/** Para las diapositivas con pasos que tienen su propio botón «Repetir». */
-export function volverAlPaso(n) {
-  const hook = hooks.get(diapos[actual].id);
-  paso = n;
-  hook?.alPaso?.(paso);
-}
+const siguiente = () => ir(actual + 1);
+const anterior = () => ir(actual - 1);
 
 function alTeclear(evento) {
   if (evento.altKey || evento.ctrlKey || evento.metaKey) return;
@@ -182,7 +151,7 @@ function armarBarra() {
   document.querySelector('.barra').addEventListener('click', (evento) => {
     const boton = evento.target.closest('button');
     if (!boton) return;
-    if (boton.dataset.ir) ir(Number(boton.dataset.ir), { atras: Number(boton.dataset.ir) < actual });
+    if (boton.dataset.ir) ir(Number(boton.dataset.ir));
     else if (boton.dataset.nav === 'anterior') anterior();
     else if (boton.dataset.nav === 'siguiente') siguiente();
     else if (boton.dataset.nav === 'pantalla') pantallaCompleta();
@@ -211,5 +180,5 @@ function actualizarBarra() {
   });
   document.querySelector('[data-zona="contador"]').textContent = `${actual + 1} / ${diapos.length}`;
   document.querySelector('[data-nav="anterior"]').disabled = actual === 0;
-  document.querySelector('[data-nav="siguiente"]').disabled = actual === diapos.length - 1 && !hooks.get(diapo.id)?.pasos;
+  document.querySelector('[data-nav="siguiente"]').disabled = actual === diapos.length - 1;
 }

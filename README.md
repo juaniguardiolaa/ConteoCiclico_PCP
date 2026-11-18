@@ -114,7 +114,7 @@ npm test
 | `docs/` | La app (HTML, CSS y JavaScript sin build). Es lo que publica GitHub Pages. |
 | `docs/js/dominio/` | Lógica pura con tests: etiquetas, validaciones, registros, cola, conciliación, indicadores, ajustes. |
 | `docs/js/pantallas/` | Una pantalla por paso del diagrama de flujo. |
-| `docs/presentacion/` | Presentación para la clase: once diapositivas con demos en vivo (conteo, controles, cola sin señal, planilla, conciliación y ajustes) que usan los mismos módulos de `docs/js/dominio/`. Lo que se carga ahí queda en el navegador y no toca la planilla. |
+| `docs/presentacion/` | Presentación para la clase: diez diapositivas con demos en vivo (conteo, controles, cola sin señal, planilla, conciliación y ajustes) que usan los mismos módulos de `docs/js/dominio/`. Lo que se carga ahí queda en el navegador y no toca la planilla. |
 | `apps-script/` | Servidor: `Code.gs` (se edita a mano), `Datos.gs` y `Dominio.gs` (generados) y `conteo-ciclico.gs`, el archivo único que se pega en Apps Script. |
 | `data/` | Excel del caso entregado por la cátedra, sin modificar. |
 | `scripts/` | Exportación de datos del Excel, generación del código de Apps Script y servidor local. |

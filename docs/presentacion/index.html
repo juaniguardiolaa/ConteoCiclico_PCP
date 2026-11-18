@@ -162,64 +162,36 @@
   </section>
 
   <!-- ===================================================================== E1 -->
-  <section class="diapo" id="viaje" data-codigo="E1" data-seccion="E" data-titulo="El viaje de un registro">
+  <section class="diapo" id="planilla" data-codigo="E1" data-seccion="E" data-titulo="La planilla">
     <header class="cabeza">
-      <h2>Qué pasa cuando tocás «Confirmar y enviar»</h2>
+      <h2>La planilla: donde llega cada conteo</h2>
       <span class="codigo">E1</span>
-      <p class="bajada"><span data-zona="viaje-origen"></span>. Avanzá con <kbd>→</kbd>.</p>
+      <p class="bajada">Cuando el operario confirma, se agrega sola una fila en Google Sheets. Nadie copia datos a mano.</p>
     </header>
-    <div class="viaje" data-paso="0">
-      <div class="nodo nodo-celular">
-        <h3>Celular</h3>
-        <p class="nodo-sub">App en GitHub Pages</p>
-        <pre class="json" data-zona="viaje-pedido"></pre>
-        <p class="nodo-ok">✓ Enviado</p>
-      </div>
-      <div class="tramo tramo-ida"><span>POST · text/plain<br>sin preflight de CORS</span></div>
-      <div class="nodo nodo-script">
-        <h3>Web App</h3>
-        <p class="nodo-sub">Google Apps Script</p>
-        <ol class="chequeos">
-          <li data-desde="2"><span><b>Token</b> igual al de Parametros</span></li>
-          <li data-desde="3"><span><b>LockService</b>: un envío por vez</span></li>
-          <li data-desde="4"><span><b>Valida</b> otra vez las reglas 1 a 7</span></li>
-          <li data-desde="5"><span><b>Agrega</b> la fila en Conteo_1410</span></li>
-          <li data-desde="6"><span><b>Anota</b> la llamada en Log_API</span></li>
-        </ol>
-        <pre class="json respuesta" data-zona="viaje-respuesta"></pre>
-      </div>
-      <div class="tramo tramo-hoja"><span>appendRow</span></div>
-      <div class="nodo nodo-hoja">
-        <h3>Google Sheets</h3>
-        <p class="nodo-sub mono">Conteo_1410</p>
-        <table class="mini-tabla">
-          <thead><tr><th>ID</th><th>Hora</th><th>Pos.</th><th>Código</th><th>Lote</th><th class="num">Cant.</th><th>Estado</th></tr></thead>
-          <tbody data-zona="viaje-filas"></tbody>
-        </table>
-        <p class="nodo-sub mono">Log_API</p>
-        <p class="log-linea" data-zona="viaje-log"></p>
-      </div>
-      <div class="paquete" aria-hidden="true">{ }</div>
-      <button type="button" class="boton secundario repetir" data-accion="repetir-viaje">Repetir</button>
-    </div>
-  </section>
-
-  <!-- ===================================================================== E2 -->
-  <section class="diapo" id="hojas" data-codigo="E2" data-seccion="E" data-titulo="La planilla">
-    <header class="cabeza">
-      <h2>La planilla por dentro, con los datos de esta demo</h2>
-      <span class="codigo">E2</span>
-    </header>
-    <div class="hojas-grilla">
-      <ul class="hojas-lista" data-zona="hojas-lista"></ul>
-      <div class="hoja">
-        <div class="hoja-barra">
-          <span class="hoja-nombre mono" data-zona="hoja-nombre"></span>
-          <span class="hoja-nota" data-zona="hoja-nota"></span>
+    <div class="planilla-grilla">
+      <div class="planilla-flujo">
+        <div class="flujo-paso">
+          <span class="icono-celular" aria-hidden="true"></span>
+          <p><b>Celular</b>El operario toca «Confirmar y enviar».</p>
         </div>
-        <div class="hoja-fx"><span class="hoja-celda mono" data-zona="hoja-celda"></span><span class="fx">fx</span><code data-zona="hoja-fx"></code></div>
-        <div class="hoja-grilla" data-zona="hoja-grilla"></div>
+        <p class="flujo-flecha">se envía solo</p>
+        <div class="flujo-paso">
+          <span class="icono-hoja" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <p><b>Google Sheets</b>Aparece una fila nueva, con quién contó y a qué hora.</p>
+        </div>
       </div>
+      <div class="hoja-simple">
+        <p class="hoja-simple-cabeza"><span class="pestania-hoja">Conteo_1410</span><span data-zona="conteo-total"></span></p>
+        <table class="hoja-tabla">
+          <thead><tr><th></th><th>Hora</th><th>Quién contó</th><th>Posición</th><th>Material</th><th>Lote</th><th class="num">Cantidad</th></tr></thead>
+          <tbody data-zona="conteo-filas"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="tres-partes">
+      <article><span class="parte-num">1</span><div><h3>Lo que ya sabíamos</h3><p>El stock al 30/09 y los 40 movimientos del 1 al 14/10, tal como vinieron en el caso.</p></div></article>
+      <article><span class="parte-num">2</span><div><h3>Lo que contamos</h3><p>Una fila por cada posición que se confirma desde el celular.</p></div></article>
+      <article><span class="parte-num">3</span><div><h3>El resultado</h3><p>La conciliación, calculada con fórmulas que cualquiera puede revisar.</p></div></article>
     </div>
   </section>
 
